@@ -1,0 +1,26 @@
+/* CSS for the HTML produced by the renderers, not specific to this version of 
+    the codex application. */
+
+.family {
+}
+.pair {
+    margin-bottom: 1rem;
+}
+.pair_detail {
+    color: #999;
+}
+.children_preamble {
+    margin-top: 1rem;
+}
+.children {
+    margin: 1rem;
+}
+.child {
+    margin: 1rem 0;
+}
+.owner {
+    margin: 1rem;
+}
+.title {
+    font-weight: bold;
+}

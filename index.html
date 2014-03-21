@@ -1,0 +1,403 @@
+<!doctype html>
+<html>
+<!-- <html manifest="build/codex.appmanifest"> -->
+<head>
+    <meta charset="utf-8"/>
+    <title>&#9883; Frontier</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-touch-icon" content="black" />
+    <link rel="apple-touch-startup-image" href="images/loading-screen.png"/>
+    <link rel="apple-touch-icon" href="images/icon.jpg" />
+    
+    <!-- The nightmare that has becone iOS -->
+    <!-- non-retina iPhone pre iOS 7 
+    <link rel="apple-touch-icon" href="icon57.png" sizes="57x57">-->
+    <!-- non-retina iPad pre iOS 7 
+    <link rel="apple-touch-icon" href="icon72.png" sizes="72x72">-->
+    <!-- non-retina iPad iOS 7 
+    <link rel="apple-touch-icon" href="icon76.png" sizes="76x76">-->
+    <!-- retina iPhone pre iOS 7 
+    <link rel="apple-touch-icon" href="icon114.png" sizes="114x114">-->
+    <!-- retina iPhone iOS 7 
+    <link rel="apple-touch-icon" href="icon120.png" sizes="120x120">-->
+    <!-- retina iPad pre iOS 7 
+    <link rel="apple-touch-icon" href="icon144.png" sizes="144x144">-->
+    <!-- retina iPad iOS 7 
+    <link rel="apple-touch-icon" href="icon152.png" sizes="152x152">-->    
+     
+    <link href="build/c.css" rel="stylesheet" />
+</head>
+<body>
+    <div id="tabgroup">
+        <div id="tabs" class="builders">
+            <a class="rules" data-bind="tap: tab">Rules</a>
+            <a class="builders" data-bind="tap: tab">Builders</a>
+            <a class="dice" data-bind="tap: tab">Dice</a>
+            <a class="history" data-bind="tap: tab">History</a>
+        </div>
+        <div id="tabbar" class="builders">
+            <div class="rules">
+                <select data-bind="event: {change: changeSection}">
+                    <option value="introduction">Introduction</option>
+                    <!-- 
+                    <option>Probabilities</option>
+                    <option>Section 3</option>
+                     -->
+                </select>
+            </div>
+            <div class="builders">
+                <select data-bind="event: {change: changeSection}">
+                    <optgroup label="People">
+                        <option value="character">Characters</option>
+                        <option value="family">Family</option>
+                        <option value="relationship">Relationships</option>
+                    </optgroup>
+                    <optgroup label="Antagonists">
+                        <option value="gang">Gangs</option>
+                        <option value="encounter">Encounters</option>
+                    </optgroup>
+                    <optgroup label="Stuff">
+                        <option value="loot">Loot</option>
+                        <option value="container">Containers</option>
+                    </optgroup>
+                    <optgroup label="The World">
+                        <option value="town">Towns</option>
+                        <option value="corporation">Corporation</option>
+                        <option value="store">Stores</option>
+                        <option value="weather">Weather</option>
+                    </optgroup>
+                </select>
+            </div>
+            <div class="dice placeholder">&nbsp;</div>
+            <div class="history">
+                <ul class="sections">
+                    <li class="history selected" data-bind="tap: swapSection"><a>History</a></li>
+                    <li class="saved" data-bind="tap: swapSection"><a>Saved</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="card" id="rules-card">
+        <div id="introduction">
+            <div class="welcome">
+                <img src="images/route66.png"/>
+                <p>Welcome to the Midlands!</p>
+                <p>Today is <span data-bind="text: today()"></span>
+                <p>Weather: <span data-bind="text: weather()"></span>.</p>
+            </div>
+            <p>
+                This is <em>The Codex</em>, the application portion of the RPG game <em>Atomic
+                    Frontier</em>. It'll work on your phone, tablet or laptop.
+            </p>
+            <p>
+                To save <em>The Codex</em> on your phone's desktop as an app icon:
+            </p>
+            <p>
+                <b>iPhone/iPad:</b> Select the share menu
+                on the bottom toolbar of your browser, then select "Add to Home Screen." Follow 
+                the prompts from there.  
+            </p>
+            <p>
+                <b>Android:</b> Bookmark this page. Then return to your home screen and
+                press-and-hold in an empty space. When prompted, select "Shortcut", then select
+                "Bookmark".
+            </p>
+        </div>
+        <div id="probabilities">
+        </div>
+    </div>
+    <div class="card" id="builders-card">
+        <div id="character">
+            <div class="label">
+                <b>Options: </b>
+                Gender: [ <span data-bind="text: selectedGender"></span> ], 
+                Profession: [ <span data-bind="text: selectedProfession"></span> ]
+            </div>
+            <div class="well" data-bind="html: output"></div>
+            <button class="btn" data-bind="tap: create">Create</button>
+            <button class="btn" data-bind="tap: save">Save</button>
+            <button class="btn" data-bind="tap: panel.toggle">Options</button>
+            
+            <div id="character_panel" class="panel">
+                <legend>Gender</legend>
+                <label class="select">
+                    <select data-bind="options: genders, value: selectedGender"></select>
+                </label>
+                <legend>Profession</legend>
+                <label class="select">
+                    <select data-bind="options: professions, value: selectedProfession"></select>
+                </label>
+                <div class="buttons">
+                    <button class="btn" data-bind="tap: create">Create</button>
+                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
+                </div>
+            </div>
+        </div>
+        <div id="encounter">
+            <div class="label">
+                <b>Options:</b> None
+            </div>
+            <div class="well" data-bind="html: output"></div>
+            <button class="btn" data-bind="tap: create">Create</button>
+            <button class="btn" data-bind="tap: save">Save</button>
+            <button class="btn" data-bind="tap: panel.toggle">Options</button>
+            <div id="encounter_panel" class="panel">
+                <div class="buttons">
+                    <button class="btn" data-bind="tap: create">Create</button>
+                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
+                </div>                
+            </div>
+        </div>
+        <div id="gang">
+            <div class="label">
+                <b>Options:</b> Type: [ <span data-bind="text: selectedType"></span> ], 
+                Members: [ <span data-bind="text: count"></span> ]
+            </div>
+            <div class="well" data-bind="html: output"></div>
+            <button class="btn" data-bind="tap: create">Create</button>
+            <button class="btn" data-bind="tap: save">Save</button>
+            <button class="btn" data-bind="tap: panel.toggle">Options</button>
+            <div id="gang_panel" class="panel">
+                <legend>Type of Gang</legend>
+                <label class="select">
+                    <select data-bind="options: gangTypes, value: selectedType"></select>
+                </label>
+                <legend>Members (Die roll or #)</legend>
+                <label class="select">
+                    <input type="text" data-bind="value: count, valueUpdate: 'afterkeydown'"/>
+                </label>
+                <div class="buttons">
+                    <button class="btn" data-bind="tap: create">Create</button>
+                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
+                </div>                
+            </div>
+        </div>
+        <div id="loot">
+            <div class="label">
+                <b>Options:</b> Location: [ <span data-bind="text: selectedLocation"></span> ], 
+                Profession [ <span data-bind="text: selectedProfession"></span> ], 
+                <span style="white-space: nowrap">Total Value [ <span data-bind="text: totalValue"></span> ]</span>
+            </div>
+            <div class="well" data-bind="html: output"></div>
+            <button class="btn" data-bind="tap: create">Create</button>
+            <button class="btn" data-bind="tap: save">Save</button>
+            <button class="btn" data-bind="tap: panel.toggle">Options</button>
+            
+            <div id="loot_panel" class="panel">
+                <legend>Location</legend>
+                <label class="select">
+                    <select name="selectedLocation" data-bind="options: locations, value: selectedLocation, event: {change: onChange, valueUpdate: 'afterkeydown'}"></select>
+                </label>
+                <legend>Profession</legend>
+                <label class="select">
+                    <select name="selectedProfession" data-bind="options: professions, value: selectedProfession, event: {change: onChange, valueUpdate: 'afterkeydown'}"></select>
+                </label>
+                <legend>Total Value (1-500)</legend>
+                <label class="select">
+                    <input type="number" data-bind="value: totalValue, valueUpdate: 'afterkeydown'"/>
+                </label>
+                <div class="buttons">
+                    <button class="btn" data-bind="tap: create">Create</button>
+                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
+                </div>                
+            </div>
+        </div>
+        <div id="container">
+            <div class="label">
+                <b>Options:</b> Type: [ <span data-bind="text: selectedContainer"></span> ]
+            </div>
+            <div class="well" data-bind="html: output"></div>
+            <button class="btn" data-bind="tap: create">Create</button>
+            <button class="btn" data-bind="tap: save">Save</button>
+            <button class="btn" data-bind="tap: panel.toggle">Options</button>
+            
+            <div id="container_panel" class="panel">
+                <legend>Type</legend>
+                <label class="select">
+                    <select name="selectedContainer" data-bind="options: containers, value: selectedContainer"></select>
+                </label>
+                <div class="buttons">
+                    <button class="btn" data-bind="tap: create">Create</button>
+                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
+                </div>                
+            </div>
+        </div>
+        <div id="store">
+        <!-- 
+            <div class="label">
+                <b>Options:</b> Type: [ <span data-bind="text: selectedContainer"></span> ]
+            </div>
+             -->
+            <div class="well" data-bind="html: output"></div>
+            <button class="btn" data-bind="tap: create">Create</button>
+            <button class="btn" data-bind="tap: save">Save</button>
+            <!-- 
+            <button class="btn" data-bind="tap: panel.toggle">Options</button>
+            -->
+            <div id="store_panel" class="panel">
+                <!-- 
+                <legend>Type</legend>
+                <label class="select">
+                    <select name="selectedContainer" data-bind="options: containers, value: selectedContainer"></select>
+                </label>
+                <div class="buttons">
+                    <button class="btn" data-bind="tap: create">Create</button>
+                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
+                </div>
+                 -->                
+            </div>
+        </div>
+        <div id="relationship">
+            <div class="label">
+                <b>Options:</b> Relationship: [ <span data-bind="text: selectedRelation"></span> ], 
+                Profession: [ <span data-bind="text: selectedProfession"></span> ]
+            </div>
+            <div class="well" data-bind="html: output"></div>
+            <button class="btn" data-bind="tap: create">Create</button>
+            <button class="btn" data-bind="tap: save">Save</button>
+            <button class="btn" data-bind="tap: panel.toggle">Options</button>
+            <div id="relationship_panel" class="panel">
+                <legend>Profession</legend>
+                <label class="select">
+                    <select data-bind="options: professions, value: selectedProfession"></select>
+                </label>
+                <legend>Relationship</legend>
+                <label class="select">
+                    <select name="selectedRelation" data-bind="options: relationships, value: selectedRelation"></select>
+                </label>            
+                <div class="buttons">
+                    <button class="btn" data-bind="tap: create">Create</button>
+                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
+                    <button class="btn" data-bind="tap: panel.toggle">Options</button>
+                </div>                
+            </div>
+        </div>
+        <div id="injuries">
+            <p>Injuries</p>
+            <p>Set points and type (bash, cut, bullet, fire), and it'll create a description. </p>
+        </div>
+        <div id="town">
+            <div class="label">
+                <b>Options:</b> Geography: [ <span data-bind="text: selectedGeography"></span> ]
+            </div>
+            <!-- 
+            <p>These are not town names, they are place names, and there may be a more generic 
+            place generator that either includes towns, or is separate from towns. But for now: </p>
+             -->
+            <div class="well" data-bind="html: output"></div>
+            <button class="btn" data-bind="tap: create">Create</button>
+            <button class="btn" data-bind="tap: save">Save</button>
+            <button class="btn" data-bind="tap: panel.toggle">Options</button>
+            
+            <div id="town_panel" class="panel">
+                <legend>Geography</legend>
+                <label class="select">
+                    <select data-bind="options: geographies, value: selectedGeography"></select>
+                </label>
+                <div class="buttons">
+                    <button class="btn" data-bind="tap: create">Create</button>
+                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
+                </div>                
+            </div>
+        </div>
+        <div id="stores">
+            <p>Stores</p>
+        </div>
+        <div id="weather">
+            <div class="label">
+                <b>Options:</b> Month: [ <span data-bind="text: selectedMonth"></span> ]
+            </div>
+            <div class="well" data-bind="html: output"></div>
+            <button class="btn" data-bind="tap: create">Create</button>
+            <button class="btn" data-bind="tap: save">Save</button>
+            <button class="btn" data-bind="tap: panel.toggle">Options</button>
+
+            <div id="weather_panel" class="panel">
+                <legend>Month</legend>
+                <label class="select">
+                    <select data-bind="options: months, value: selectedMonth"></select>
+                </label>
+                <div class="buttons">
+                    <button class="btn" data-bind="tap: create">Create</button>
+                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
+                </div>
+            </div>
+        </div>
+        <div id="corporation">
+            <div class="well" data-bind="html: output"></div>
+            <button class="btn" data-bind="tap: create">Create</button>
+            <button class="btn" data-bind="tap: save">Save</button>
+            <div id="corporation_panel" class="panel">
+            </div>
+        </div>
+        <div id="family">
+            <div class="label">
+                <b>Options:</b> Profession [ <span data-bind="text: selectedProfession"></span> ], 
+                    Generations [ <span data-bind="text: selectedGeneration"></span> ]
+            </div>
+            <div class="well" data-bind="html: output"></div>
+            <button class="btn" data-bind="tap: create">Create</button>
+            <button class="btn" data-bind="tap: save">Save</button>
+            <button class="btn" data-bind="tap: panel.toggle">Options</button>
+            <div id="family_panel" class="panel">
+                <legend>Profession</legend>
+                <label class="select">
+                    <select data-bind="options: professions, value: selectedProfession"></select>
+                </label>
+                <legend>Generations</legend>
+                <label class="select">
+                    <select data-bind="options: generations, value: selectedGeneration"></select>
+                </label>
+                <div class="buttons">
+                    <button class="btn" data-bind="tap: create">Create</button>
+                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
+                </div>
+            </div>
+        </div>
+    </div> 
+    <div class="card" id="dice-card">
+        <div id="dice">
+            <div class="well dice animated" data-bind="visible: output && descr">
+                <p>
+                    <span data-bind="html: output"></span><br/>
+                    <span class="minor" data-bind="html: descr"></span>
+                </p>
+            </div>
+            <div style="margin-top: 10px;">Modifier</div>
+            <div class="btn-group">
+                <a class="btn btn-small" data-active="btn-danger" data-bind="tap: setMod">-3</a>
+                <a class="btn btn-small" data-active="btn-danger" data-bind="tap: setMod">-2</a>
+                <a class="btn btn-small" data-active="btn-danger" data-bind="tap: setMod">-1</a>
+                <a class="btn btn-small" data-active="btn-primary" data-bind="tap: setMod, css: {'btn-primary': mod == 0}">0</a>
+                <a class="btn btn-small" data-active="btn-success" data-bind="tap: setMod">+1</a>
+                <a class="btn btn-small" data-active="btn-success" data-bind="tap: setMod">+2</a>
+                <a class="btn btn-small" data-active="btn-success" data-bind="tap: setMod">+3</a>
+                <a class="btn btn-small" data-active="btn-success" data-bind="tap: setMod">+4</a>
+            </div>
+            <div class="buttons">
+                <button class="btn btn-large btn-block" data-bind="tap: roll">Roll</button>
+                <button class="btn btn-large btn-block" data-bind="tap: combatRoll">Combat Roll</button>
+            </div>
+        </div>
+    </div> 
+    <div class="card" id="history-card">
+        <div id="history" data-bind="foreach: historyItems">
+            <div class="hsy-entry">
+                <div data-bind="text: $data"></div>
+                <a data-bind="click: $parent.save">Save</a>
+                <a data-bind="click: $parent.removeHistory">Delete</a>
+            </div>
+        </div>
+        <div id="saved" data-bind="foreach: savedItems">
+            <div class="hsy-entry">
+                <div data-bind="text: $data"></div>
+                <a data-bind="click: $parent.email">Email</a>
+                <a data-bind="click: $parent.remove">Delete</a>
+            </div>
+        </div>
+    </div>
+    <script src="build/c.js"></script>
+</body>
+</html>

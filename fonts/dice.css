@@ -1,0 +1,76 @@
+/* Just click to select the code */
+ 
+@charset "UTF-8";
+ 
+@font-face {
+  font-family: "dice";
+  src:url("fonts/dice.eot");
+  src:url("fonts/dice.eot?#iefix") format("embedded-opentype"),
+    url("fonts/dice.ttf") format("truetype"),
+    url("fonts/dice.svg#untitled-font-1") format("svg"),
+    url("fonts/dice.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+}
+ 
+[data-icon]:before {
+  font-family: "dice" !important;
+  content: attr(data-icon);
+  font-style: normal !important;
+  font-weight: normal !important;
+  font-variant: normal !important;
+  text-transform: none !important;
+  speak: none;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+ 
+[class^="icon-"]:before,
+[class*=" icon-"]:before {
+  font-family: "dice" !important;
+  font-style: normal !important;
+  font-weight: normal !important;
+  font-variant: normal !important;
+  text-transform: none !important;
+  speak: none;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+} 
+ 
+.icon-:before {
+   content: "a"; /* 5 */
+} 
+ 
+.icon-:before {
+   content: "b"; /* 4 */
+} 
+ 
+.icon-:before {
+   content: "c"; /* 1 */
+} 
+ 
+.icon-:before {/* 6 */
+   content: "d"; 
+} 
+ 
+.icon-:before {/* 3 */
+   content: "e"; 
+} 
+ 
+.icon-:before {/* 2 */
+   content: "f"; 
+} 
+ 
+.icon-:before {/* + */
+   content: "j"; 
+} 
+ 
+.icon-:before {/* - */
+   content: "k"; 
+} 
+ 
+.icon-:before {/* [] */
+   content: "g"; 
+}
