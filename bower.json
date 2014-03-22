@@ -1,22 +1,21 @@
 {
-  "name": "The Atomic Frontier Codex",
-  "version": "0.0.0",
-  "authors": [
-    "Alx Dark <alxdark@gmail.com>"
-  ],
-  "main": "index.html",
-  "license": "GPLv3",
-  "private": true,
-  "ignore": [
-    "**/.*",
-    "node_modules",
-    "bower_components"
-  ],
-  "dependencies": {
-   "radio": "uxder/Radio#v0.2.0", 
-   "humane-js": "wavded/humane-js#3.1.0",
-   "knockout": "bowerjs/knockout#v3.0.0",
-   "knockout-ES5": "SteveSanderson/knockout-es5",
-   "bootstrap": "~3.1.1"
-  }
+   "name":"The Atomic Frontier Codex",
+   "version":"0.0.0",
+   "authors":[
+      "Alx Dark <alxdark@gmail.com>"
+   ],
+   "main":"index.html",
+   "license":"GPLv3",
+   "private":true,
+   "ignore":[
+      "**/.*",
+      "node_modules",
+      "bower_components"
+   ],
+   "dependencies":{
+      "radio":"uxder/Radio#v0.2.0",
+      "humane-js":"wavded/humane-js#3.1.0",
+      "knockout":"bowerjs/knockout#v3.0.0",
+      "knockout-ES5":"SteveSanderson/knockout-es5"
+   }
 }
