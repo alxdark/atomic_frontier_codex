@@ -7,15 +7,14 @@ module.exports = function(grunt) {
         "bower_components/humane-js/humane.js",
         "../../ionosphere/build/ion.js",
         "../../ionosphere/build/atomic.js",
+        "src/more.js",
         "src/codex.js"
     ];
     var css = [
         "fonts/fonts.css",
         "bower_components/humane-js/themes/original.css",
-        /*
         "bower_components/bootstrap/dist/css/bootstrap.css",
         "bower_components/bootstrap/dist/css/bootstrap-theme.css",
-        */
         "src/codex.css",
         "src/renderers.css"
     ];

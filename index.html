@@ -26,8 +26,8 @@
     <link rel="apple-touch-icon" href="icon144.png" sizes="144x144">-->
     <!-- retina iPad iOS 7 
     <link rel="apple-touch-icon" href="icon152.png" sizes="152x152">-->    
-     
-    <link href="build/c.css" rel="stylesheet" />
+    
+    <link href="build/c.css" rel="stylesheet" /> 
 </head>
 <body>
     <div id="tabgroup">
@@ -116,9 +116,9 @@
                 Profession: [ <span data-bind="text: selectedProfession"></span> ]
             </div>
             <div class="well" data-bind="html: output"></div>
-            <button class="btn" data-bind="tap: create">Create</button>
-            <button class="btn" data-bind="tap: save">Save</button>
-            <button class="btn" data-bind="tap: panel.toggle">Options</button>
+            <button class="btn btn-default" data-bind="tap: create">Create</button>
+            <button class="btn btn-default" data-bind="tap: save">Save</button>
+            <button class="btn btn-default" data-bind="tap: panel.toggle">Options</button>
             
             <div id="character_panel" class="panel">
                 <legend>Gender</legend>
@@ -130,8 +130,8 @@
                     <select data-bind="options: professions, value: selectedProfession"></select>
                 </label>
                 <div class="buttons">
-                    <button class="btn" data-bind="tap: create">Create</button>
-                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
+                    <button class="btn btn-default" data-bind="tap: create">Create</button>
+                    <button class="btn btn-default" data-bind="tap: panel.toggle">Close</button>
                 </div>
             </div>
         </div>
@@ -140,14 +140,14 @@
                 <b>Options:</b> None
             </div>
             <div class="well" data-bind="html: output"></div>
-            <button class="btn" data-bind="tap: create">Create</button>
-            <button class="btn" data-bind="tap: save">Save</button>
-            <button class="btn" data-bind="tap: panel.toggle">Options</button>
+            <button class="btn btn-default" data-bind="tap: create">Create</button>
+            <button class="btn btn-default" data-bind="tap: save">Save</button>
+            <button class="btn btn-default" data-bind="tap: panel.toggle">Options</button>
             <div id="encounter_panel" class="panel">
                 <div class="buttons">
-                    <button class="btn" data-bind="tap: create">Create</button>
-                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
-                </div>                
+                    <button class="btn btn-default" data-bind="tap: create">Create</button>
+                    <button class="btn btn-default" data-bind="tap: panel.toggle">Close</button>
+                </div>
             </div>
         </div>
         <div id="gang">
@@ -156,9 +156,9 @@
                 Members: [ <span data-bind="text: count"></span> ]
             </div>
             <div class="well" data-bind="html: output"></div>
-            <button class="btn" data-bind="tap: create">Create</button>
-            <button class="btn" data-bind="tap: save">Save</button>
-            <button class="btn" data-bind="tap: panel.toggle">Options</button>
+            <button class="btn btn-default" data-bind="tap: create">Create</button>
+            <button class="btn btn-default" data-bind="tap: save">Save</button>
+            <button class="btn btn-default" data-bind="tap: panel.toggle">Options</button>
             <div id="gang_panel" class="panel">
                 <legend>Type of Gang</legend>
                 <label class="select">
@@ -169,26 +169,26 @@
                     <input type="text" data-bind="value: count, valueUpdate: 'afterkeydown'"/>
                 </label>
                 <div class="buttons">
-                    <button class="btn" data-bind="tap: create">Create</button>
-                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
+                    <button class="btn btn-default" data-bind="tap: create">Create</button>
+                    <button class="btn btn-default" data-bind="tap: panel.toggle">Close</button>
                 </div>                
             </div>
         </div>
         <div id="loot">
             <div class="label">
-                <b>Options:</b> Location: [ <span data-bind="text: selectedLocation"></span> ], 
+                <b>Options:</b> Place: [ <span data-bind="text: selectedPlace"></span> ], 
                 Profession [ <span data-bind="text: selectedProfession"></span> ], 
                 <span style="white-space: nowrap">Total Value [ <span data-bind="text: totalValue"></span> ]</span>
             </div>
             <div class="well" data-bind="html: output"></div>
-            <button class="btn" data-bind="tap: create">Create</button>
-            <button class="btn" data-bind="tap: save">Save</button>
-            <button class="btn" data-bind="tap: panel.toggle">Options</button>
+            <button class="btn btn-default" data-bind="tap: create">Create</button>
+            <button class="btn btn-default" data-bind="tap: save">Save</button>
+            <button class="btn btn-default" data-bind="tap: panel.toggle">Options</button>
             
             <div id="loot_panel" class="panel">
-                <legend>Location</legend>
+                <legend>Place</legend>
                 <label class="select">
-                    <select name="selectedLocation" data-bind="options: locations, value: selectedLocation, event: {change: onChange, valueUpdate: 'afterkeydown'}"></select>
+                    <select name="selectedPlace" data-bind="options: places, value: selectedPlace, event: {change: onChange, valueUpdate: 'afterkeydown'}"></select>
                 </label>
                 <legend>Profession</legend>
                 <label class="select">
@@ -199,8 +199,8 @@
                     <input type="number" data-bind="value: totalValue, valueUpdate: 'afterkeydown'"/>
                 </label>
                 <div class="buttons">
-                    <button class="btn" data-bind="tap: create">Create</button>
-                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
+                    <button class="btn btn-default" data-bind="tap: create">Create</button>
+                    <button class="btn btn-default" data-bind="tap: panel.toggle">Close</button>
                 </div>                
             </div>
         </div>
@@ -209,9 +209,9 @@
                 <b>Options:</b> Type: [ <span data-bind="text: selectedContainer"></span> ]
             </div>
             <div class="well" data-bind="html: output"></div>
-            <button class="btn" data-bind="tap: create">Create</button>
-            <button class="btn" data-bind="tap: save">Save</button>
-            <button class="btn" data-bind="tap: panel.toggle">Options</button>
+            <button class="btn btn-default" data-bind="tap: create">Create</button>
+            <button class="btn btn-default" data-bind="tap: save">Save</button>
+            <button class="btn btn-default" data-bind="tap: panel.toggle">Options</button>
             
             <div id="container_panel" class="panel">
                 <legend>Type</legend>
@@ -219,34 +219,29 @@
                     <select name="selectedContainer" data-bind="options: containers, value: selectedContainer"></select>
                 </label>
                 <div class="buttons">
-                    <button class="btn" data-bind="tap: create">Create</button>
-                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
+                    <button class="btn btn-default" data-bind="tap: create">Create</button>
+                    <button class="btn btn-default" data-bind="tap: panel.toggle">Close</button>
                 </div>                
             </div>
         </div>
         <div id="store">
-        <!-- 
             <div class="label">
-                <b>Options:</b> Type: [ <span data-bind="text: selectedContainer"></span> ]
+                <b>Options:</b> Location: [ <span data-bind="text: selectedLocation"></span> ]
             </div>
-             -->
             <div class="well" data-bind="html: output"></div>
-            <button class="btn" data-bind="tap: create">Create</button>
-            <button class="btn" data-bind="tap: save">Save</button>
-            <!-- 
-            <button class="btn" data-bind="tap: panel.toggle">Options</button>
-            -->
+            <button class="btn btn-default" data-bind="tap: create">Create</button>
+            <button class="btn btn-default" data-bind="tap: save">Save</button>
+            <button class="btn btn-default" data-bind="tap: panel.toggle">Options</button>
+
             <div id="store_panel" class="panel">
-                <!-- 
-                <legend>Type</legend>
+                <legend>Locations</legend>
                 <label class="select">
-                    <select name="selectedContainer" data-bind="options: containers, value: selectedContainer"></select>
+                    <select name="selectedLocation" data-bind="options: locations, value: selectedLocation"></select>
                 </label>
                 <div class="buttons">
-                    <button class="btn" data-bind="tap: create">Create</button>
-                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
+                    <button class="btn btn-default" data-bind="tap: create">Create</button>
+                    <button class="btn btn-default" data-bind="tap: panel.toggle">Close</button>
                 </div>
-                 -->                
             </div>
         </div>
         <div id="relationship">
@@ -255,9 +250,9 @@
                 Profession: [ <span data-bind="text: selectedProfession"></span> ]
             </div>
             <div class="well" data-bind="html: output"></div>
-            <button class="btn" data-bind="tap: create">Create</button>
-            <button class="btn" data-bind="tap: save">Save</button>
-            <button class="btn" data-bind="tap: panel.toggle">Options</button>
+            <button class="btn btn-default" data-bind="tap: create">Create</button>
+            <button class="btn btn-default" data-bind="tap: save">Save</button>
+            <button class="btn btn-default" data-bind="tap: panel.toggle">Options</button>
             <div id="relationship_panel" class="panel">
                 <legend>Profession</legend>
                 <label class="select">
@@ -268,9 +263,9 @@
                     <select name="selectedRelation" data-bind="options: relationships, value: selectedRelation"></select>
                 </label>            
                 <div class="buttons">
-                    <button class="btn" data-bind="tap: create">Create</button>
-                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
-                    <button class="btn" data-bind="tap: panel.toggle">Options</button>
+                    <button class="btn btn-default" data-bind="tap: create">Create</button>
+                    <button class="btn btn-default" data-bind="tap: panel.toggle">Close</button>
+                    <button class="btn btn-default" data-bind="tap: panel.toggle">Options</button>
                 </div>                
             </div>
         </div>
@@ -287,9 +282,9 @@
             place generator that either includes towns, or is separate from towns. But for now: </p>
              -->
             <div class="well" data-bind="html: output"></div>
-            <button class="btn" data-bind="tap: create">Create</button>
-            <button class="btn" data-bind="tap: save">Save</button>
-            <button class="btn" data-bind="tap: panel.toggle">Options</button>
+            <button class="btn btn-default" data-bind="tap: create">Create</button>
+            <button class="btn btn-default" data-bind="tap: save">Save</button>
+            <button class="btn btn-default" data-bind="tap: panel.toggle">Options</button>
             
             <div id="town_panel" class="panel">
                 <legend>Geography</legend>
@@ -297,8 +292,8 @@
                     <select data-bind="options: geographies, value: selectedGeography"></select>
                 </label>
                 <div class="buttons">
-                    <button class="btn" data-bind="tap: create">Create</button>
-                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
+                    <button class="btn btn-default" data-bind="tap: create">Create</button>
+                    <button class="btn btn-default" data-bind="tap: panel.toggle">Close</button>
                 </div>                
             </div>
         </div>
@@ -310,9 +305,9 @@
                 <b>Options:</b> Month: [ <span data-bind="text: selectedMonth"></span> ]
             </div>
             <div class="well" data-bind="html: output"></div>
-            <button class="btn" data-bind="tap: create">Create</button>
-            <button class="btn" data-bind="tap: save">Save</button>
-            <button class="btn" data-bind="tap: panel.toggle">Options</button>
+            <button class="btn btn-default" data-bind="tap: create">Create</button>
+            <button class="btn btn-default" data-bind="tap: save">Save</button>
+            <button class="btn btn-default" data-bind="tap: panel.toggle">Options</button>
 
             <div id="weather_panel" class="panel">
                 <legend>Month</legend>
@@ -320,15 +315,15 @@
                     <select data-bind="options: months, value: selectedMonth"></select>
                 </label>
                 <div class="buttons">
-                    <button class="btn" data-bind="tap: create">Create</button>
-                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
+                    <button class="btn btn-default" data-bind="tap: create">Create</button>
+                    <button class="btn btn-default" data-bind="tap: panel.toggle">Close</button>
                 </div>
             </div>
         </div>
         <div id="corporation">
             <div class="well" data-bind="html: output"></div>
-            <button class="btn" data-bind="tap: create">Create</button>
-            <button class="btn" data-bind="tap: save">Save</button>
+            <button class="btn btn-default" data-bind="tap: create">Create</button>
+            <button class="btn btn-default" data-bind="tap: save">Save</button>
             <div id="corporation_panel" class="panel">
             </div>
         </div>
@@ -338,9 +333,9 @@
                     Generations [ <span data-bind="text: selectedGeneration"></span> ]
             </div>
             <div class="well" data-bind="html: output"></div>
-            <button class="btn" data-bind="tap: create">Create</button>
-            <button class="btn" data-bind="tap: save">Save</button>
-            <button class="btn" data-bind="tap: panel.toggle">Options</button>
+            <button class="btn btn-default" data-bind="tap: create">Create</button>
+            <button class="btn btn-default" data-bind="tap: save">Save</button>
+            <button class="btn btn-default" data-bind="tap: panel.toggle">Options</button>
             <div id="family_panel" class="panel">
                 <legend>Profession</legend>
                 <label class="select">
@@ -351,8 +346,8 @@
                     <select data-bind="options: generations, value: selectedGeneration"></select>
                 </label>
                 <div class="buttons">
-                    <button class="btn" data-bind="tap: create">Create</button>
-                    <button class="btn" data-bind="tap: panel.toggle">Close</button>
+                    <button class="btn btn-default" data-bind="tap: create">Create</button>
+                    <button class="btn btn-default" data-bind="tap: panel.toggle">Close</button>
                 </div>
             </div>
         </div>
@@ -398,6 +393,6 @@
             </div>
         </div>
     </div>
-    <script src="build/c.min.js"></script>
+    <script src="build/c.js"></script>
 </body>
 </html>

@@ -5203,15 +5203,12 @@ void function(global, undefined_, undefined){
 
     var DIE_PARSER  = /\d+d\d+/g,
         FORMAT_PARSER = /\{[^\|}]+\}/g,
-        FROM_CAMEL_CASE = /([A-Z]{1,1}[a-z]+)/,
         RANDOM_STRING = /\{[^\{\}]*\|[^\{\}]*\}/g,
         STARTS_WITH_VOWEL = /^[aeiouAEIOU]/,
         STARTS_WITH_THE = /^[tT]he\s/,
-        SMALL_WORDS = /^(a|an|and|as|at|but|by|en|for|if|in|of|on|or|the|to|vs?\.?|via)$/i,
+        SMALL_WORDS = /^(a|an|and|as|at|but|by|en|for|if|in|nor|of|on|or|per|the|to|vs?\.?|via)$/i,
         PARENS = /(\{[^\}]*\})/g,
-        CONS_Y = /[BCDFGHIJKLMNPQRSTVWXZbcdfghijklmnpqrstvwxz]y$/,
-        COMMENT_PARSER = /\/\*\s*(?:\r\n|\n)([\s\S]*?)(?:\r\n|\n)\s*\*\//,
-        lgv = null;
+        CONS_Y = /[BCDFGHIJKLMNPQRSTVWXZbcdfghijklmnpqrstvwxz]y$/;
     
     function basicPluralize(string) {
         if (/[x|s]$/.test(string)) {
@@ -5344,20 +5341,6 @@ void function(global, undefined_, undefined){
             a = slice.call(a,0);
             b = slice.call(b,0);
             return ion.unique(a.concat(b));
-        },
-        flatten: function(array, result) {
-            return flat(array, (result || []));
-
-            function flat(array, result) {
-                forEach.call(array, function(element) {
-                    if (ion.isArray(element)) {
-                        ion.flatten(element, result);
-                    } else {
-                        result.push(element);
-                    }
-                });
-                return result;
-            }
         },
         without: function(array) {
             //if (array.length === 0 || arguments.length === 0) { return []; }
@@ -5568,29 +5551,6 @@ void function(global, undefined_, undefined){
             return (count === 1) ? obj.singular : obj.plural;
         },        
         /**
-         * Convert string to title case. There's a long list of rules for this 
-         * kind of capitalization, see: [this link][0].
-         * 
-         * *To Title Case 2.0.1 - http://individed.com/code/to-title-case/<br>
-         * Copyright 2008-2012 David Gouch. Licensed under the MIT License.*
-         * 
-         * [0]: http://daringfireball.net/2008/05/title_case
-         * 
-         *     ion.titleCase("antwerp benedict");
-         *     => "Antwerp Benedict"
-         *     ion.titleCase("antwerp-Benedict");
-         *     => "Antwerp-Benedict"
-         *     ion.titleCase("bead to a small mouth");
-         *     => "Bead to a Small Mouth"
-         *     
-         * @static
-         * @method titleCase
-         * @for ion
-         * 
-         * @param string {String} string to title case
-         * @return {String} in title case
-         */
-        /**
          * Convert a string to sentence case (only the first letter capitalized). 
          * 
          *     ion.sentenceCase("antwerp benedict");
@@ -5613,23 +5573,42 @@ void function(global, undefined_, undefined){
             }
             return string;
         },
+        /**
+         * Convert string to title case. There's a long list of rules for this 
+         * kind of capitalization, see: [this link][0].
+         * 
+         * *To Title Case 2.1 - http://individed.com/code/to-title-case/<br>
+         * Copyright 2008-2013 David Gouch. Licensed under the MIT License.*
+         * 
+         * [0]: http://daringfireball.net/2008/05/title_case
+         * 
+         *     ion.titleCase("antwerp benedict");
+         *     => "Antwerp Benedict"
+         *     ion.titleCase("antwerp-Benedict");
+         *     => "Antwerp-Benedict"
+         *     ion.titleCase("bead to a small mouth");
+         *     => "Bead to a Small Mouth"
+         *     
+         * @static
+         * @method titleCase
+         * @for ion
+         * 
+         * @param string {String} string to title case
+         * @return {String} in title case
+         */
         titleCase: function(string) {
-            return string.replace(/([^\W_]+[^\s-]*) */g, function (match, p1, index, title) {
-                if (index > 0 && index + p1.length !== title.length &&
-                    p1.search(SMALL_WORDS) > -1 && title.charAt(index - 2) !== ":" && 
-                    title.charAt(index - 1).search(/[^\s-]/) < 0) {
+            return string.replace(/[A-Za-z0-9\u00C0-\u00FF]+[^\s-]*/g, function(match, index, title) {
+                if (index > 0 && index + match.length !== title.length &&
+                        match.search(SMALL_WORDS) > -1 && title.charAt(index - 2) !== ":" &&
+                        (title.charAt(index + match.length) !== '-' || title.charAt(index - 1) === '-') &&
+                        title.charAt(index - 1).search(/[^\s-]/) < 0) {
                     return match.toLowerCase();
                 }
-                if (p1.substr(1).search(/[A-Z]|\../) > -1) {
+                if (match.substr(1).search(/[A-Z]|\../) > -1) {
                     return match;
                 }
                 return match.charAt(0).toUpperCase() + match.substr(1);
             });
-            /* My original, very simple implementation
-            return string.split(' ').map(function(token) {
-                return token.substring(0,1).toUpperCase() + token.substring(1);
-            }).join(' ');
-            */
         },
         /**
          * Convert a string to a valid tag by removing spaces and converting 
@@ -5679,31 +5658,27 @@ void function(global, undefined_, undefined){
         /* ======================================= */
         
         /**
-         * Return a random element from the array. Does not change the array.
+         * Return a random element from the array. Does not change the array. Or, if supplied a 
+         * string, return a single instance of a string with several variant values, indicated 
+         * with the syntax "{option1|option2|option3} static value". Or, if supplied a number, 
+         * returns a value between one and N, where N is the number (same as `ion.roll()`).
          * 
          *     ion.random(['A','B','C']);
          *     => 'A'
          * 
-         * @static
-         * @method random
-         * @for ion
-         * 
-         * @param array {Array} The array from which to select an element.
-         * @return {Object} an element of the array, or null if the array is empty
-         */
-        /**
-         * Return a single instance of a string with several variant values, indicated 
-         * with the syntax "{option1|option2|option3} static value".
-         * 
          *     ion.random("{Big|Bad|Black} Dog");
          *     => 'Bad Dog'
+         *     
+         *     ion.random(8);
+         *     => 3
          * 
          * @static
          * @method random
          * @for ion
          * 
-         * @param string {String} A string with optional variants
-         * @return {String} a single random instance of the string
+         * @param string {String|Array|Number} A string with optional variants, or an array from 
+         *      which to select an element, or a number, N, for a random number between 1-N.
+         * @return {Object} a single randomized instance, based on the value passed in
          */
         random: function(value) {
             if (ion.isString(value)) {
@@ -5712,8 +5687,10 @@ void function(global, undefined_, undefined){
                 });
             } else if (ion.isArray(value)) {
                 return (value.length) ? value[ ~~(Math.random()*value.length) ] : null;    
+            } else if (ion.isNumber(value)) {
+                return ion.roll(value);
             }
-            return null;
+            throw new Error("Invalid value: " + value);
         },
         /**
          * Returns a random number between one and N:
@@ -5763,7 +5740,7 @@ void function(global, undefined_, undefined){
          */
         roll: function(value) {
             if (arguments.length === 3) { // 2, 6, -10 == "2d6-10"
-                return ion.roll(ion.format("{0}d{1}{2}", arguments[0], arguments[1], arguments[2]));
+                return ion.roll(ion.format("{0}d{1}+{2}", arguments[0], arguments[1], arguments[2]));
             } else if (arguments.length === 2) { // 3 6 == "3d6"
                 return ion.roll(ion.format("{0}d{1}", arguments[0], arguments[1]));
             } else if (typeof value === "number") {
@@ -5783,9 +5760,8 @@ void function(global, undefined_, undefined){
                 });
                 try { return eval(value); } 
                 catch(e) { return 0; }
-            } else {
-                return value;
-            }        
+            }
+            throw new Error("Invalid value: " + value);
         },
         /**
          * Select a value from a number of "strategy" values. Will keep unwrapping 
@@ -5883,21 +5859,15 @@ void function(global, undefined_, undefined){
          */
         gaussian: function(stdev, mean) {
             var x = 0, y = 0, rds, c, m = mean || 0;
-            // Two values get generated. We save one so 50% of the time, this function
-            // is that much faster. It does get called frequently.
-            if (lgv) {
-                var temp = lgv;
-                lgv = null;
-                return Math.round((temp)*stdev) + m;
-            }
             // Uses Box-Muller transform: http://www.protonfish.com/jslib/boxmuller.shtml
+            // Two values get generated. You could cache the y value, but the time savings 
+            // is trivial and this causes issues when mocking randomness for the tests. So don't.
             do {
                 x = Math.random()*2-1;
                 y = Math.random()*2-1;
                 rds = (x*x) + (y*y);
             } while (rds === 0 || rds > 1);
             c = Math.sqrt(-2*Math.log(rds)/rds);
-            lgv = y*c;
             return Math.round((x*c)*stdev) + m;
         },
         /**
@@ -5921,59 +5891,58 @@ void function(global, undefined_, undefined){
             } while (value < 0);
             return value;
         },
-        /**
-         * Pass in a function that has a body which is a multiline JavaScript comment.
-         * The comment can embed any string text you would like. This function will
-         * return the multiline string (# == asterisk or *). The function is very useful 
-         * for managing JavaScript templates in code rather than in HTML.
-         * 
-         *     var html = ion.multiline(function() {/#
-         *         <div class="footer">
-         *             This is an HTML multiline template.
-         *         </div>
-         *     #/});
-         * 
-         * 
-         * @static
-         * @method multiline
-         * @for ion
-         * 
-         * @param func {Function} a function, the body of which is a JavaScript comment,
-         *         which embeds the multiline string.
-         * @returns a string
-         */
-        multiline: function(func) {
-            return COMMENT_PARSER.exec(func.toString())[1];
+        // TODO: This still doesn't remove some of the logic around setting up valid parameter
+        // objects, which is surprisingly complicated.
+        // TODO: REMOVEME
+        addIfSet: function(obj, field, value, values, throwError) {
+            obj = obj || {};
+            if (ion.isUndefined(value) || value === null || value === "") {
+                return;
+            }
+            if (ion.isString(value) && (value.toLowerCase() === "either" || value.toLowerCase() === "any")) {
+                return;
+            }
+            if (values && !ion.contains(values, value)) {
+                if (throwError) {
+                    throw new Error("Value '"+value+"' not in values: " + values.join(', '));
+                }
+                return;
+            }
+            obj[field] = value;
+            return obj;
         }
     });
 })();
 
 /**
- * Builder for constructing toString() and toHTML() methods for the game.
+ * This constructor returns a function that can be called with many different parameter
+ * signatures to create toString() and toHTML() output (these different parameters are 
+ * documented as different "methods").
+ * 
+ *     var b = ion.Builder();
+ *     b("p", {class: 'foo'}, "Some text in the paragraph tag.");
+ *     b.toString();
+ *     => "<p class='foo'>Some text in the paragraph tag.</p>");
  * 
  * @class ion.Builder
- * 
- * @constructor
- * @param context {Object} object around which string is being build, in functions
- *      passed to the bldr, "this" will refer to the context object.
- */
-/**
- * @method Builder
- * @for ion.Builder
- * 
- *     var b = Builder();
- *     b(['a','b','c', function(b, element) {
- *         b("{0}",element);
- *     });
- * 
- * @param array {Array} items to iterate over
- * @param func {Function} a function to call for each item in the array, passed:
- *      
  */
 ion.Builder = (function() {
 
     var map = Array.prototype.map;
-    
+
+    /**
+     * Passes each element of the array to the function, which is passed three parameters: 
+     * the builder, the item in the list, and the item's index in the list.
+     * 
+     *     builder(list, function(b, item, index) {
+     *         b("#"+index + " " +item.name);
+     *     });
+     * 
+     * @function
+     * @param array {Array}
+     * @param func {Function}
+     * @chainable
+     */
     function each(array, func) {
         var oldContext = this.context;
         (array || []).forEach(function(item, index) {
@@ -5982,6 +5951,14 @@ ion.Builder = (function() {
         }, this);
         this.context = oldContext;
     }
+    /**
+     * Appends the string. If there are additional values appended afterwards, they
+     * are interpolated as if the string was a format string (see `ion.format()`).
+     * 
+     * @function
+     * @param string {String}
+     * @chainable
+     */
     function format() {
         if (arguments.length === 1) {
             this.str += arguments[0];
@@ -5989,6 +5966,23 @@ ion.Builder = (function() {
             this.str += ion.format.apply(this.context, arguments);
         }
     }
+    /**
+     * If the expression is true, execute the true function, otherwise execute the 
+     * false function, in either case, the function will be passed one parameter: 
+     * the builder.
+     * 
+     *     builder(!!this.parent, function(b) {
+     *         b("Only added if this.parent was present");
+     *     }, function(b) {
+     *         b("Only added if this.parent was NOT present");
+     *     });
+     *     
+     * @function
+     * @param expr {Boolean}
+     * @param trueFn {Function}
+     * @param falseFn {Function}
+     * @chainable
+     */
     function either(expr, trueFn, falseFn) {
         if (expr) {
             trueFn.call(this.context, this);
@@ -5996,15 +5990,39 @@ ion.Builder = (function() {
             falseFn.call(this.context, this);
         }
     }
+    /**
+     * If the expression is true, execute the function. The function is passed one 
+     * parameter: the builder.
+     * 
+     *     builder(!!this.parent, function(b) {
+     *         b("Only added if this.parent was present");
+     *     });
+     * 
+     * @function
+     * @param expr {Boolean}
+     * @param func {Function}
+     * @chainable
+     */
     function when(expr, func) {
         if (expr) {
-            if (typeof func === "function") {
-                func.call(this.context, this);
-            } else {
-                this.str += func;
-            }
+            func.call(this.context, this);
         }
     }
+    /**
+     * Adds an HTML tag, and then calls the supplied function to create 
+     * content nested in the tag. The function is passed one argument: 
+     * the builder.
+     * 
+     *     builder("p", {class: "person"}, function(b) {
+     *         b(character.toString();
+     *     });
+     * 
+     * @function
+     * @param name {String} the tag name
+     * @param attrs {Object} name/value attribute pairs
+     * @param func {Function} a callback function
+     * @chainable
+     */
     function tag(name, attrs, func) {
         this.str += "<"+name;
         for (var attr in attrs) {
@@ -6014,6 +6032,19 @@ ion.Builder = (function() {
         func.call(this.context, this);
         this.str += "</"+name+">";
     }
+    /**
+     * Adds an HTML tag, and then calls the supplied function to create 
+     * content nested in the tag. The function is passed one argument: 
+     * the builder.
+     * 
+     *     builder("p", {class: "person"}, character.toString());
+     * 
+     * @function
+     * @param name {String} the tag name
+     * @param attrs {Object} name/value attribute pairs
+     * @param string {String} a string to add as the content of the tag
+     * @chainable
+     */
     function simpletag(name, attrs, string) {
         this.str += "<"+name;
         for (var attr in attrs) {
@@ -6021,11 +6052,32 @@ ion.Builder = (function() {
         }
         this.str += ">"+string+"</"+name+">";
     }
+    /**
+     * If the expression evaluates as true, appends the string.
+     * 
+     *     builder(!!this.parent, "Only added if this.parent was present");
+     * 
+     * @function
+     * @param expr {Boolean}
+     * @param string {String}
+     * @chainable
+     */
     function append(expr, string) {
         if (expr) {
             this.str += string;
         }
     }
+    /**
+     * Add the string, pluralized.
+     * 
+     *     builder("plum", 3).toString()
+     *     => "3 plums"
+     * 
+     * @function
+     * @param string {String}
+     * @param count {Number}
+     * @chainable
+     */
     function plural(string, count) {
         this.str += ion.pluralize(string, count);
     }
@@ -6072,8 +6124,8 @@ ion.Builder = (function() {
     
     ion.dice.Die = ion.define({
         /**
-         * ***If you want to roll some dice to get a number, use the {{#crossLink "ion/roll"}}{{/crossLink}} 
-         * utility method. It is simpler and more flexible.***
+         * ***If you want to roll some dice to get a number, use the `ion.roll()` utility method. 
+         * It is simpler and more flexible.***
          * 
          * If you are modeling a game where you need to record the value of each 
          * die rolled, you will need to model each individual die, and that is 
@@ -6155,7 +6207,7 @@ ion.Builder = (function() {
             ion.dice.Die.call(this, 6, color);
         },
         roll: function() {
-            this.value = ion.roll("1d3-2");
+            this.value = ion.roll(3)-2;
             return this.value;
         },
         symbol: function() {
@@ -6164,8 +6216,8 @@ ion.Builder = (function() {
     });
     
     /**
-     * ***If you want to roll some dice to get a number, use the {{#crossLink "ion/roll"}}{{/crossLink}} 
-     * utility method. It is simpler and more flexible.***
+     * ***If you want to roll some dice to get a number, use the `ion.roll()` utility method. 
+     * It is simpler and more flexible.***
      * 
      * A set of dice. Helps to roll an entire set of dice, get the sum of the 
      * dice, and so forth.
@@ -6177,12 +6229,16 @@ ion.Builder = (function() {
      */
     ion.dice.Dice = ion.define({
         init: function() {
-            this.length = arguments.length;
-            var first = arguments[0];
-            if (first instanceof ion.dice.Dice || ion.isArray(first)) {
-                ion.extend(this, first);
-            } else {
-                ion.extend(this, arguments);    
+            this.length = 0;
+            for (var i=0; i < arguments.length; i++) {
+                var arg = arguments[i];
+                if (arg instanceof ion.dice.Dice || ion.isArray(arg)) {
+                    for (var j=0; j < arg.length; j++) {
+                        this[this.length++] = arg[j];
+                    }
+                } else {
+                    this[this.length++] = arguments[i];
+                }
             }
             sum.call(this);
         },
@@ -6654,49 +6710,43 @@ ion.models.IonSet = ion.define({
     }
 });
 
-(function(_) {
-    
-    _.models.Item = _.define(_.models.Model, {
+ion.models.Item = ion.define(ion.models.Model, {
+    /**
+     * An item. 
+     * @class ion.models.Item
+     * @extends ion.models.Model
+     * 
+     * @constructor
+     * @param data {String/Object} The name of the object (as registered with `ion.registerItem`),
+     * or the properties to set for this item.
+     */
+    init: function(data) {
+        data = ion.isString(data) ? {name: data} : data;
         /**
-         * An item. 
-         * @class ion.models.Item
-         * @extends ion.models.Model
-         * 
-         * @constructor
-         * @param data {String/Object} The name of the object (as registered with `_.registerItem`),
-         * or the properties to set for this item.
+         * An array of string tags that characterize this item.
+         * @property {Array} tags
          */
-        init: function(data) {
-            data = _.isString(data) ? {name: data} : data;
-            /**
-             * An array of string tags that characterize this item.
-             * @property {Array} tags
-             */
-            this.tags = [];
-            /**
-             * The name of this item in a pluralization string, e.g. "ox(en)".
-             * @property {String} name
-             */
-            this.name = data.name;
-            /**
-             * Encumbrance for this item, combining its weight and size.
-             * @property {Number} enc
-             */
-            this.enc = 0;
-            /**
-             * What someone would pay, in a relevant currency, for this item
-             * @property {Number} value 
-             */
-            this.value = 0;
-            _.models.Model.call(this, data);
-            if (this.article || this.singular || this.plural) {
-                throw Error("Item has deprecated properties" + JSON.stringify(this));
-            }
-            this.type = "ion.models.Item";
-        }
-    });
+        this.tags = [];
+        /**
+         * The name of this item in a pluralization string, e.g. "ox(en)".
+         * @property {String} name
+         */
+        this.name = data.name;
+        /**
+         * Encumbrance for this item, combining its weight and size.
+         * @property {Number} enc
+         */
+        this.enc = 0;
+        /**
+         * What someone would pay, in a relevant currency, for this item
+         * @property {Number} value 
+         */
+        this.value = 0;
+        ion.models.Model.call(this, data);
+        this.type = "ion.models.Item";
+    }
+});
 
-})(ion);
 (function(ion, Item, Model) {
 
     function sortByName(a,b) {
@@ -6730,10 +6780,10 @@ ion.models.IonSet = ion.define({
          * @class ion.models.Bag
          * @extends ion.models.Model
          * @constructor
-         * @param [data] {Object} The JSON data to initialize this model.
+         * @param [params] {Object} The JSON data to initialize this model.
          */
-        init: function(data) {
-            Model.call(this, data);
+        init: function(params) {
+            Model.call(this, params);
             this.entries = this.entries || [];
             this.type = "ion.models.Bag";
         },
@@ -6747,7 +6797,7 @@ ion.models.IonSet = ion.define({
          * @param {Bag} bag to combine into this bag (it will not be changed or referenced)
         */
         addBag: function(bag) {
-            bag.clone().entries.forEach(function(entry) {
+            (bag && bag.clone().entries || []).forEach(function(entry) {
                 this.add(entry.item, entry.count);
             }, this);
         },
@@ -6758,7 +6808,7 @@ ion.models.IonSet = ion.define({
          * @param {Bag} bag specifying the items to remove from this bag
          */
         removeBag: function(bag) {
-            bag.clone().entries.forEach(function(entry) {
+            (bag && bag.clone().entries || []).forEach(function(entry) {
                 this.remove(entry.item, entry.count);
             }, this);
         },
@@ -6766,15 +6816,7 @@ ion.models.IonSet = ion.define({
          * Add items to this bag.
          *
          * @method add
-         * @param name {String} the name of an item to add
-         * @param [count=1] {Number} of items to add
-         * @return {Number} the number of items after adding
-         */
-        /**
-         * Add items to this bag.
-         *
-         * @method add
-         * @param item {ion.models.Item} an item to add
+         * @param item {String|ion.models.Item} an item to add
          * @param [count=1] {Number} of items to add
          * @return {Number} the number of items after adding
          */
@@ -6796,6 +6838,12 @@ ion.models.IonSet = ion.define({
             entry.count += count;
             return entry.count;
         },
+        /**
+         * Sort the entries of the bag given a sorting function
+         * 
+         * @method sort
+         * @param func {Function} a sort function
+         */
         sort: function(func) {
             this.entries.sort(func || sortByName);
         },
@@ -6804,16 +6852,7 @@ ion.models.IonSet = ion.define({
          * because trying to remove more items than are in the bag will throw exceptions.
          *
          * @method remove
-         * @param name {String} the name of an item to remove
-         * @param [count=1] {Number} of items to remove
-         * @return {Number} the number of items after removals
-         */
-        /**
-         * Remove items from this bag. You should examine the bag before removing items,
-         * because trying to remove more items than are in the bag will throw exceptions.
-         *
-         * @method remove
-         * @param item {ion.models.Item} an item to remove
+         * @param item {String|ion.models.Item} an item to remove
          * @param [count=1] {Number} of items to remove
          * @return {Number} the number of items after removals
          */
@@ -6837,6 +6876,19 @@ ion.models.IonSet = ion.define({
             }
             return entry.count;
         },
+        /**
+         * Return this bag, filtered using a filter function, which is passed the item and 
+         * the count:
+         * 
+         *     bag.filter(function(item, count) {
+         *         return item.is('food');
+         *     }).toString();
+         *     => "A stick of beef jerky, a bottle of milk, a pear, and a can of coffee."
+         * 
+         * @method filter
+         * @param func {Function} filter function
+         * @returns {ion.models.Bag}
+         */
         filter: function(func) {
             var other = new ion.models.Bag();
             for (var i = this.entries.length-1; i >= 0; i--) {
@@ -6854,15 +6906,7 @@ ion.models.IonSet = ion.define({
          * group of items in the bag.
          *
          * @method value
-         * @param [name] {String} the name of an item; if supplied, only the value of these items will be returned
-         * @return {Number} the total value of the items in the bag
-         */
-        /**
-         * Sum the value of all items in this bag. Can also provide a sum for an individual
-         * group of items in the bag.
-         *
-         * @method value
-         * @param [item] {ion.models.Item} an item; if supplied, only the value of these items will be returned
+         * @param [item] {String|ion.models.Item} an item; if supplied, only the value of these items will be returned
          * @return {Number} the total value of the items in the bag
          */
         value: function(item) {
@@ -6873,15 +6917,7 @@ ion.models.IonSet = ion.define({
          * group of items in the bag.
          *
          * @method enc
-         * @param [name] {String} the name of an item; if supplied, only the encumbrance of these items will be returned
-         * @return {Number} the total encumbrance of the items in the bag
-         */
-        /**
-         * Sum the encumbrance of all items in this bag. Can also provide a sum for an individual
-         * group of items in the bag.
-         *
-         * @method enc
-         * @param [item] {ion.models.Item} an item; if supplied, only the encumbrance of these items will be returned
+         * @param [item] {String|ion.models.Item} an item; if supplied, only the encumbrance of these items will be returned
          * @return {Number} the total encumbrance of the items in the bag
          */
         enc: function(item) {
@@ -6892,15 +6928,7 @@ ion.models.IonSet = ion.define({
          * group of items in the bag.
          *
          * @method count
-         * @param [name] {String} the name of an item; if supplied, only these items will be counted in the bag
-         * @return {Number} the total count of the items in the bag
-         */
-        /**
-         * The count of all items in this bag. Can also provide the count of an individual
-         * group of items in the bag.
-         *
-         * @method count
-         * @param [item] {ion.models.Item} an item; if supplied, only these items will be counted in the bag
+         * @param [item] {String|ion.models.Item} an item; if supplied, only these items will be counted in the bag
          * @return {Number} the total count of the items in the bag
          */
         count: function(item) {
@@ -6942,20 +6970,40 @@ ion.models.Name = ion.define(ion.models.Model, {
         /**
          * First or given name
          * @property given
-         * @type String
+         * @type {String}
          */
         /**
          * Last or family name
          * @property family
-         * @type String 
+         * @type {String} 
          */
         /**
          * Nick name. Used currently for gang members, sometimes for traders.
          * @property nickname
-         * @type String
+         * @type {String}
          */
         ion.models.Model.call(this, data);
         this.type = "ion.models.Name";
+    },
+    properties: {
+        /**
+         * A read-only synonym property for the given name.
+         * 
+         * @property first
+         * @type {String}
+         */
+        first: function() {
+            return this.given;
+        },
+        /**
+         * A read-only synonym property for the family name.
+         * 
+         * @property last
+         * @type {String}
+         */
+        last: function() {
+            return this.family;
+        }
     },
     /**
      * @method toString
@@ -7136,7 +7184,7 @@ ion.models.Character =  ion.define(ion.models.Model, {
     }
 });
 
-(function(_) {
+(function(ion) {
     
     var MAX_TRAIT_VALUE = 4;
     
@@ -7146,7 +7194,7 @@ ion.models.Character =  ion.define(ion.models.Model, {
         }
     }
     
-    _.models.Profession =  _.define(_.models.Model, {
+    ion.models.Profession =  ion.define(ion.models.Model, {
         /**
          * An occupation or profession that provides the history, social standing, and 
          * traits of a character.
@@ -7181,7 +7229,7 @@ ion.models.Character =  ion.define(ion.models.Model, {
             this.supplements = [];
             this.tags = [];
             this.postprocess = ion.identity;
-            _.models.Model.call(this, params);
+            ion.models.Model.call(this, params);
             this.type = "ion.models.Profession";
         },
         train: function(character, points) {
@@ -7197,24 +7245,24 @@ ion.models.Character =  ion.define(ion.models.Model, {
 
             // Force grouping into a subset of supplemental skills, enough to 
             // assign all the points (at a limit of 4)
-            var limit = Math.ceil(points/4) - this.seeds.length + _.roll("1d2");
-            _.shuffle(this.supplements);
+            var limit = Math.ceil(points/4) - this.seeds.length + ion.roll("1d2");
+            ion.shuffle(this.supplements);
             this.supplements.forEach(function(trait, index) {
                 if (index <= limit) {
                     addTrait(map, trait, 0);    
                 }
             });
-            var names = _.keys(map);
+            var names = ion.keys(map);
 
             // Okay, the starting points, minus the mandatory seed points, can 
             // be less than zero. So test explicitly for that.
             while(points > 0 && names.length) {
-                var traitName = _.random(names);
+                var traitName = ion.random(names);
                 // prevents an infinite loop if points exceeds sum of max of all traits, and 
                 // also ensures that existing trait values are accounted for when honoring
                 // maximum values.
                 if ((map[traitName] + character.trait(traitName)) >= MAX_TRAIT_VALUE) {
-                    names = _.without(names, traitName);
+                    names = ion.without(names, traitName);
                     continue;
                 }
                 map[traitName]++;
@@ -7237,28 +7285,34 @@ ion.models.Character =  ion.define(ion.models.Model, {
     
 })(ion);
 
-(function(ion, models, Model) {
-    
-    models.Gang =  ion.define(Model, {
+ion.models.Gang =  ion.define(ion.models.Model, {
+    /**
+     * A gang 
+     * 
+     * @class ion.models.Gang
+     * @extends ion.models.Model
+     * 
+     * @constructor
+     * @param [params] {Object} parameters
+     */
+    init: function(params) {
         /**
-         * A gang 
-         * 
-         * @class ion.models.Gang
-         * @extends ion.models.Model
-         * 
-         * @constructor
-         * @param [params] {Object} parameters
+         * @property members
+         * @type {Array}
          */
-        init: function(params) {
-            this.members = [];
-            Model.call(this, params);
-            this.type = "ion.models.Gang";
-        },
-        add: function(character) {
-            this.members.push(character);
-        }
-    });
-})(ion, ion.models, ion.models.Model);
+        this.members = [];
+        /**
+         * @property kind
+         * @type String
+         */
+        ion.models.Model.call(this, params);
+        this.type = "ion.models.Gang";
+    },
+    add: function(character) {
+        this.members.push(character);
+    }
+});
+
 ion.models.Weather = ion.define(ion.models.Model, {
     /**
      * A weather forecast for a day in a month.
@@ -7277,467 +7331,173 @@ ion.models.Weather = ion.define(ion.models.Model, {
 
 
 ion.models.Family = ion.define({
+    /**
+     * A family. This means (in the context of this game), a set of parents with some kids, 
+     * some of whom may themselves be in family objects with kids, etc. One of the building 
+     * blocks of encounters and homesteads, at the least.
+     * 
+     * @class ion.models.Family
+     * @extends ion.models.Model
+     * @constructor
+     * @param [params] {Object} The JSON data to initialize this model.
+     */
     init: function(params) {
+        /**
+         * Unmarried children
+         * @property children
+         * @type {Array} of `ion.models.Character` instances 
+         */
         this.children = [];
+        /**
+         * Children in families of their own
+         * @property couples
+         * @type {Array} of `ion.models.Family` instances 
+         */
         this.couples = []; // children with spouses, represented by a family object. Removed from children
         ion.models.Model.call(this, params);
         this.type = "ion.models.Family";
     },
     properties: {
+        /**
+         * The number of all children (including grown children who are
+         * now part of a descendant couple).
+         * 
+         * @property childCount
+         * @returns {Number} 
+         */
         childCount: function() {
             return (this.children.length + this.couples.length);
         },
+        /**
+         * The male parent
+         * 
+         * @property male
+         * @type {ion.models.Character}
+         */
         male: function() {
             return this.parent.male ? this.parent : this.other;
         },
+        /**
+         * The female parent
+         * 
+         * @property female
+         * @type{ion.models.Character}
+         */
         female: function() {
             return this.parent.male ? this.other : this.parent;
         },
+        /**
+         * The single parent (if one of the parents has died or the parents are separated).
+         * 
+         * @property single
+         * @type {ion.models.Character} or null if both parents are still part of the family
+         */
         single: function() {
-            if (this.parent.status || this.other.status) {
-                return (this.parent.status) ? this.other : this.parent;
+            if (this.parent.status && !this.other.status) {
+                return this.other;
+            } else if (this.other.status && !this.parent.status) {
+                return this.parent;
             }
             return null;
         }
     },
-    addChild: function(child) {
-        this.children.push(child);
-        child.family = this;
-    },
-    isSingle: function(person) {
-        return this.isParent(person) && this.single !== null;
-    },
+    /**
+     * Is this person one of the parents of this family? 
+     * 
+     * @method isParent
+     * @param person
+     * @returns {Boolean} true if character is a parent, false otherwise
+     */
     isParent: function(person) {
         return (person === this.parent || person === this.other);
     }
 });
 
+/**
+ * Two people in a familial relationship. 
+ * 
+ * @class ion.models.Relationship
+ * @constructor
+ * @param older {ion.models.Character} 
+ * @param younger {ion.models.Character} 
+ * @param relationship {String}  
+ */
 ion.models.Relationship = function(older, younger, rel) {
+    /**
+     * The older person in the relationship
+     * @property older
+     * @type {ion.models.Character} 
+     */
     this.older = older;
+    /**
+     * The younger person in the relationship
+     * @property younger
+     * @type {ion.models.Character} 
+     */
     this.younger = younger;
+    /**
+     * The name of the relationship between the two people
+     * @property relationship
+     * @type {String} 
+     */
     this.relationship = rel;
 };
 
-(function(ion, Model, Bag) {
-    
-    ion.models.Store =  ion.define(Model, {
-        init: function(params) {
-            this.inventory = new Bag();
-            Model.call(this, params);
-            this.type = "ion.models.Store";
-        }
-    });
-    
-})(ion, ion.models.Model, ion.models.Bag);
-
-
-(function(_, RarityTable, Item) {
-    
-    function matchesTags(terms, model) {
-        // Star is not necessary. If you pass no terms in, it still matches.
-        var result = ((terms.ands.length === 1 && terms.ands[0] === "*") ||
-           ((_.intersection(model.tags, terms.ands).length === terms.ands.length) &&
-            (_.intersection(model.tags, terms.nots).length === 0))
-        );
-        if (!result && _.contains(terms.ands, model.searchName)) {
-            result = true;
-        }
-        if (!result && terms.or) {
-            return matchesTags(terms.or, model);
-        }
-        return result;        
-    }
-    // This really just loops, matches and returns without knowing anything about it.
-    function finder(params) {
-        var results = new RarityTable(_.identity, false);
-        for (var i=0, len = this.models.length; i < len; i++) {
-            var model = _.random(this.models[i]);
-            if (matchesTags(params, model) && this.strategy.matches(params, model)) {
-                // Note though that every entry is currently an array of synonyms.
-                results.add( model.frequency, model );
-            }
-        }
-        return results;
-    }
-    function getMemo() {
-        return {ands: [], nots: []};
-    }
-    function split(string) {
-        return string.trim().toLowerCase().split(/\s+/);
-    }
-    function parseTags(arg) {
-        var memo = getMemo();
-        if (_.isString(arg) && arg !== "") {
-            memo = split(arg).reduce(this.cbTagCollector, memo);
-        } else if (_.isArray(arg)) {
-            // TODO: This makes no sense to me, it's just consuming the first element
-            // of the array. Why is this here, why do tests break without it? 
-            var newMemo = parseTags.apply(this, arg);
-            memo.ands = memo.ands.concat(newMemo.ands);
-        }
-        return memo.ands;
-    }
-    function tagCollector(memo, tag) {
-        if (tag === "|") {
-            var newMemo = getMemo();
-            memo.or = newMemo;
-            return newMemo;
-        }
-        if (this.lookupArray) {
-            tag = this.lookupArray[parseInt(tag,10)] || tag;
-        }
-        if (tag.charAt(0) === "-") {
-            memo.nots.push(tag.substring(1));
-        } else {
-            memo.ands.push(tag);
-        }
-        return memo;
-    }
-    function buildQuery(params, arg) {
-        if (_.isString(arg) && arg !== "") {
-            params = split(arg).reduce(this.cbTagCollector, params);
-        } else if (_.isArray(arg)) {
-            for (var i=0; i < arg.length; i++) {
-                params = split(arg[i]).reduce(this.cbTagCollector, params);
-            }
-        }
-    }
-    function makeSearchName(string) {
-        string = string.replace(/\{.*\}|\(.*\)/g,'');
-        return string.replace(/\W|\s/g,'').toLowerCase();
-    }
-
-    ion.models.Database = _.define({
+ion.models.Store =  ion.define(ion.models.Model, {
+    /**
+     * A Store 
+     * 
+     * @class ion.models.Store
+     * @extends ion.models.Model
+     * 
+     * @constructor
+     * @param [params] {Object} params
+     */
+    init: function(params) {
         /**
-         * A basic models database that provides a pretty complete ability to search for models 
-         * by their tags.
-         *  
-         * Your model specs that you register with the db can include string tags, such as 
-         * "ElectricalEngineering" or "common", but these tags (which are usually declared over and 
-         * over in your models specs) quickly increase your JS file size. 
-         * 
-         *      // kinda bad
-         *      db.register("coffee cup!1!.5!common house br");
-         * 
-         * If you provide an array of tags in the constructor for `Database` or one of its 
-         * subclasses, then you can refer to those tags by their index in the same array, which 
-         * reduces the size of data files.:
-         * 
-         *      // potentially better
-         *      var db = new ItemDatabase(['uncommon','common','house','br']);
-         *      db.register("coffee cup!1!.5!1 3 4");
-         * 
-         * @class ion.models.Database
-         * @constructor
-         * 
-         * @param tags {Array} an array of tags
+         * Name of the store
+         * @property name
+         * @type {String}
          */
-        init: function(tags, strategy) {
-            this.models = [];
-            this.lookupArray = tags || [];
-            this.cbTagCollector = tagCollector.bind(this);
-            this.strategy = strategy || {buildQuery: function() {return false;}, finishQuery: _.identity, matches: _.identity};
-        },
+        this.name = null;
         /**
-         *  Register models with the database. The exact arguments and format varies by the 
-         *  type of model (different models implement this with different subclasses).
-         *
-         *  @for ion.models.Database
-         *  @method register
-         *  
+         * Owner of the store
+         * @property owner
+         * @type {ion.models.Character}
          */
-        register: _.identity,
+        this.owner = null;
         /**
-         *  Parse arguments that are used for a search. One or more tag arguments, for example.
-         *  Parameters vary depending on the type of model you are searching for.
-         *
-         *      // Searches for firearm and armor, or food
-         *      db.parseQuery('firearm | food', 'armor')
-         *
-         *  @for ion.models.Database
-         *  @method parseQuery
-         *  
+         * The cash on hand at the store. Currency (liquidity) is 
+         * tight in this game and trades will have to work with limited
+         * currency.
+         * 
+         * @property onhand
+         * @type {ion.models.Bag}
          */
-        parseQuery: function() {
-            if (!_.isUndefined(arguments[0]) && arguments[0].ands) {
-                return arguments[0];
-            }
-            var params = getMemo();
-            for (var i=0; i < arguments.length; i++) {
-                // Returns true if handled, false otherwise. If false, handle here. 
-                if (!this.strategy.buildQuery(params, arguments[i])) {
-                    buildQuery.call(this, params, arguments[i]);    
-                }
-            }
-            this.strategy.finishQuery(params);
-            return params;
-        },
+        this.onhand = null;
         /**
-         * Find a single model in this database.
-         * 
-         * @for ion.models.Database
-         * @method find
-         * 
-         * @param tags {String} tags to match
-         * @return {ion.models.Model} a single model object that matches, returned according 
-         *      to its frequency
-         */ 
-        find: function() {
-            return this.findAll.apply(this, arguments).get();
-        },
-        /**
-         * Find all models that match in the database, returned in a `ion.tables.RarityTable`
-         * instance.
-         * 
-         * @for ion.models.Database
-         * @method findAll
-         * 
-         * @param tags {String} tags to match
-         * @return {ion.tables.RarityTable} all matching models in a rarity table.
-         */ 
-        findAll: function() {
-            var params = this.parseQuery.apply(this, arguments);
-            return finder.call(this, params);
-        }
-    });
-
-    ion.models.ItemDatabase = _.define(ion.models.Database, {
-        /**
-         * 
-         * @class ion.models.ItemDatabase
-         * @extends ion.models.Database
-         * 
-         * @constructor
-         * @param tags {Array} an array of tags
+         * The inventory for sale at this establishment
+         * @property inventory
+         * @type {ion.models.Bag}
          */
-        init: function(tags) {
-            ion.models.Database.call(this, tags, {
-                buildQuery: function(params, arg) {
-                    if (_.isObject(arg) && arg.totalValue) {
-                        params.totalValue = arg.totalValue;
-                    } else if (_.isObject(arg)) {
-                        params.conditions = arg;
-                    } else if (_.isNumber(arg)) {
-                        params.totalValue = arg;
-                    } else if (_.isBoolean(arg)) {
-                        params.fillBag = arg;
-                    } else {
-                        return false;
-                    }
-                    return true;
-                },
-                finishQuery: function(params) {
-                    params.fillBag = _.isBoolean(params.fillBag) ? params.fillBag : true;
-                    params.totalValue = _.isNumber(params.totalValue) ? params.totalValue : 20;
-                    params.conditions = _.extend({minValue: 0, maxValue: Number.MAX_VALUE, minEnc: 0, maxEnc: Number.MAX_VALUE}, params.conditions || {});
-                    if (params.conditions.maxValue <= 0 || params.conditions.maxEnc <= 0 || 
-                        params.conditions.minValue > params.conditions.maxValue || params.conditions.minEnc > params.conditions.maxEnc) {
-                        throw new Error('Conditions cannot match any taggable: ' + JSON.stringify(params.conditions));
-                    }
-                    if (!_.isUndefined(params.totalValue) && params.totalValue <= 0) {
-                        throw new Error("Bag value must be more than 0");
-                    }
-                },
-                matches: function(params, model) {
-                    var cond = params.conditions;
-                    return (model.value >= cond.minValue && model.value <= cond.maxValue && 
-                            model.enc >= cond.minEnc && model.enc <= cond.maxEnc);
-                }
-            });
-        },
+        this.inventory = new ion.models.Bag();
         /**
-         * 
-         * Parameters can be provided in any order. In addition, if a parameter is an array, 
-         * it will be recursively added to search query. If the database was fed an array of tags, 
-         * then the tags supplied in the configuration strings can include indexes into that 
-         * array in order to initialize tags (this takes less space in your final download.
-         * 
-         * @method find
-         * @for ion.models.ItemDatabase
-         * 
-         * @param [tags]* {String} one or more tag strings, either to be matched, or to be 
-         *      excluded (if they start with a "-").
-         * @param [conditions] {Object} an object with conditions to match against a models
-         *      properties.
-         * @param [conditions.minValue=0] {Number} the minimum value a matching item can have
-         * @param [conditions.maxValue=Number.MAX_VALUE] {Number} the maximum value a matching item can have
-         * @param [conditions.minEnc=0] {Number} the minimum encumbrance a matching item can have
-         * @param [conditions.maxEnc=Number.MAX_VALUE] {Number} the maximum encumbrance a matching item can have
-         * @param [totalValue=20] {Number} when querying for items in a bag, what should be the total 
-         *      value of all items in the bag?
-         * @param [fillBag=true] {Boolean} if bag value is not completely filled with items, should 
-         *      it be topped off with currency?
-         * 
-         * @return {ion.models.Item} an item that matches the query
+         * A description of what the merchant will buy from players.
+         * @property buys
+         * @type {String}
          */
         /**
-         * Find all items that match the query critiera, returned in an `ion.tables.RarityTable` 
-         * instance. 
-         * 
-         * @method findAll
-         * @for ion.models.ItemDatabase
-         * 
-         * @param [tags]* {String} one or more tag strings, either to be matched, or to be 
-         *      excluded (if they start with a "-").
-         * @param [conditions] {Object} an object with conditions to match against a models
-         *      properties.
-         * @param [conditions.minValue=0] {Number} the minimum value a matching item can have
-         * @param [conditions.maxValue=Number.MAX_VALUE] {Number} the maximum value a matching item can have
-         * @param [conditions.minEnc=0] {Number} the minimum encumbrance a matching item can have
-         * @param [conditions.maxEnc=Number.MAX_VALUE] {Number} the maximum encumbrance a matching item can have
-         * @param [conditions.maxEnc=Number.MAX_VALUE] {Number} the maximum encumbrance a matching item can have
-         * @param [totalValue=20] {Number} when querying for items in a bag, what should be the total 
-         *      value of all items in the bag?
-         * @param [fillBag=true] {Boolean} if bag value is not completely filled with items, should 
-         *      it be topped off with currency?
-         * 
-         * @return {ion.tables.RarityTable} a rarity table containing all items that match 
-         *      the query
+         * A description of what the merchant sells; may be broader than what 
+         * is in inventory if it includes things that are considered irrelevant 
+         * to the game, like pottery (this may actually go away however).
+         * @property sells
+         * @type {Stirng}
          */
-        /** 
-         * Register one or more items (via a short, string-based item specification format) with the 
-         * search facilities of the library. Once these items are registered, they can be found through 
-         * the `ion.queryForItem()` method; other more complex methods for 
-         * creating treasure/loot are based on this functionality. 
-         * 
-         *     db.register(
-         *       "35mm camera!10!.5!common household ammo-35mm", 
-         *       "fancy lad cake!1!1!common preserved food luxury"
-         *     );
-         * 
-         * **Specification**
-         * 
-         * `name1; name2!value!encumbrance!tags`
-         * 
-         * The first tag must always be `common`, `uncommon` or `rare`. If a `br` tag is included, 
-         * this indicates that the item can be found broken, and it will be added to the 
-         * database twice (once intact, and once broken).
-         * 
-         * @method register
-         * @for ion.models.ItemDatabase
-         * 
-         * @param item* {String} One or more item strings
-         */        
-        register: function() {
-            // optimizing on some things, like avoiding push, using for, etc.
-            for (var i=0, len = arguments.length; i < len; i++) {
-                var string = arguments[i],
-                    parts = string.split('!'),
-                    names = parts[0].trim().split(';'),
-                    tags = parseTags.call(this, parts[3]),
-                    breakable = tags.indexOf("br") > -1,
-                    params = {
-                        value: parseFloat(parts[1]),
-                        enc: parseFloat(parts[2]),
-                        frequency: tags.shift(),
-                        tags: _.without(tags, 'br')
-                    };
-                var array = this.models[this.models.length] = [];
-                for (var j=0, len2 = names.length; j < len2; j++) {
-                    params.name = names[j].trim();
-                    params.searchName = makeSearchName(params.name);
-                    array[array.length] = new Item(params);
-                }
-                
-                if (!breakable) { continue; }
+        ion.models.Model.call(this, params);
+        this.type = "ion.models.Store";
+    }
 
-                params.tags = params.tags.concat(['br']);
-                params.value = Math.max(1, ~~(params.value/2));
-                array = this.models[this.models.length] = [];
-                for (j=0, len2 = names.length; j < len2; j++) {
-                    params.name = "broken " + names[j].trim();
-                    params.searchName = makeSearchName(params.name);
-                    array[array.length] = new Item(params);
-                }
-            }
-        }
-    });
-    
-    ion.models.ProfessionDatabase = _.define(ion.models.Database, {
-        /**
-         * 
-         * @class ion.models.ProfessionDatabase
-         * @extends ion.models.Database
-         * 
-         * @constructor
-         * @param tags {Array} an array of tags
-         */
-        init: function(params) {
-            ion.models.Database.call(this, params);
-        },
-        /**
-         * Register a profession. Once the professions are registered, they can be found by their 
-         * tags by searching the database. The names of the profession are also added as tags, 
-         * so "Coast Guard" (as a profession name) could be found with the tag `CoastGuard`.
-         * 
-         * Each profession has two parameters that are passed in as a couple. The first is the 
-         * spec described below; the second is a post-training function that may be called to 
-         * do profession-specific alteration of the character. This is a string that is interpreted 
-         * as the body of a function that is passed one parameter: `c` for the character object..
-         *  
-         *     // Tags were registered with db.registerTags(), so they can be referenced
-         *     // by index, either base-10 or base-36.
-         *     db.register(ion.models.Profession,
-         *       "Doctor!46!4d 4h 4i 2u 3r!2 5f 21 2r 2s", "c.honorific = 'Doctor';", 
-         *     );
-         *     
-         * **Specification**
-         * 
-         * `name1; name2!seed traits!supplemental traits!tags`
-         * 
-         * Seed traits are traits that members of the profession will always have to some degree 
-         * or another. The supplemental traits are other qualities that may be picked up during 
-         * participation in the profession. Finally, tags may be associated with the profession. 
-         * The first tag must always be `common`, `uncommon` or `rare`.
-         * 
-         * @method register
-         * @for ion.models.ProfessionDatabase
-         * 
-         * @param class {ion.models.Profession} a profession class or subclass that implements
-         *      game-specific training for a character.
-         * @param spec {String} one or more strings specifying professions to include.
-         * @param function {String} function body of a post-training processing method.
-         */        
-        register: function() {
-            var clazz = arguments[0];
-            
-            for (var i=1, len = arguments.length; i < len; i += 2) {
-                var parts = arguments[i].split('!'),
-                    names = parts[0].trim().split(/\s*;\s*/),
-                    seeds = parseTags.call(this, parts[1]),
-                    traits = parseTags.call(this, parts[2]),
-                    tags = parseTags.call(this, parts[3]),
-                    freq = tags.shift(),
-                    func = arguments[i+1] ? new Function("c", arguments[i+1]) : ion.identity;
-                    
-                // So you can search for professions by name (converted to tags)
-                for (var j=0; j < names.length; j++) {
-                    tags[tags.length] = _.toTag(names[j]);
-                }
-                this.models[this.models.length] = [new clazz({
-                    names: names, tags: tags, seeds: seeds, supplements: traits, postprocess: func, frequency: freq
-                })];
-            }
-        }
-    });
-    
-    ion.models.EncounterDatabase = _.define(ion.models.Database, {
-        init: function(params) {
-            ion.models.Database.call(this, params);
-        },
-        register: function() {
-            for (var i=0, len = arguments.length; i < len; i++) {
-                var parts = arguments[i].split('!');
-                
-                
-                this.models[this.models.length] = [];
-            }
-        }
-    });
-    
-})(ion, ion.tables.RarityTable, ion.models.Item);
-
-
+});
 
 (function(ion, m, Builder, Character, Relationship) {
 
@@ -7793,7 +7553,7 @@ ion.models.Relationship = function(older, younger, rel) {
     function combatantString(b, c) {
         // Remove uninteresting traits from description.
         var traits = {};
-        atomic.combatantTraits.forEach(function(traitName) {
+        atomic.getCombatTraits().forEach(function(traitName) {
             if (c.trait(traitName) > 0) {
                 traits[traitName] = c.trait(traitName);
             }
@@ -7814,26 +7574,32 @@ ion.models.Relationship = function(older, younger, rel) {
         b("p", {}, function(b) {
             charBasics.call(this, b);
         });
-        b("p", {}, function(b) {
-            b("{0}. ", traitsToString(this.traits));    
+        b(!!this.inventory.count() || ion.keys(this.traits).length > 0, function(b) {
+            b("div", {class: "more"}, function(b) {
+                b("p", {}, function(b) {
+                    b("{0}. ", traitsToString(this.traits));    
+                });
+                b(!!this.inventory.count(), function(b) {
+                    b("p", {}, function(b) {
+                        b("Possessions: {0}", this.inventory.toString());    
+                    });
+                });
+            });
         });
-        return b("p", {}, function(b) {
-            b("Possessions: {0}", this.inventory.toString());    
-        }).toString();
+        return b.toString();
     };
     r.familyHTML = function() {
         var b = Builder(this);
         b("div", {class: "family"}, function(b) {
-            b("div", {class: "pair"}, function(b) {
-                b(coupleNames(this));
-                b("span", {class: "pair_detail"}, function(b) {
-                     b(!!this.single, function() {
-                         b(r.characterString.call(this.single));
-                     }, function() {
-                         b(r.characterString.call(this.male));
-                         b(" ");
-                         b(r.characterString.call(this.female));
-                     });
+            
+            b("p", {}, coupleNames(this));
+            b("div", {class:"more"}, function(b) {
+                b(!!this.single, function() {
+                    b(r.characterHTML.call(this.single));
+                }, function() {
+                    b(r.characterHTML.call(this.male));
+                    b(" ");
+                    b(r.characterHTML.call(this.female));
                 });
             });
             b(!!this.childCount, function(b) {
@@ -7843,7 +7609,7 @@ ion.models.Relationship = function(older, younger, rel) {
                 b("div", {class: "children"}, function(b) {
                     b(this.children, function(b, child) {
                         b("div", {class: "child"}, function(b) {
-                            b(r.characterString.call(child));    
+                            b(r.characterHTML.call(child));    
                         });
                     });
                     b(this.couples, function(b, couple) {
@@ -7875,11 +7641,13 @@ ion.models.Relationship = function(older, younger, rel) {
         b("p", {}, function(b) {
             b(relatedNames(this.older, this.younger, this.relationship));
         });
-        b("p", {}, function(b) {
-            b(r.characterString.call(this.older));
-        })(" ");
-        b("p", {}, function(b) {
-            b(r.characterString.call(this.younger));
+        b("div", {class: "more"}, function(b) {
+            b("p", {}, function(b) {
+                b(r.characterString.call(this.older));
+            })(" ");
+            b("p", {}, function(b) {
+                b(r.characterString.call(this.younger));
+            });
         });
         return b.toString();
     };
@@ -7891,6 +7659,9 @@ ion.models.Relationship = function(older, younger, rel) {
     };
     r.itemString = function() {
         return ion.pluralize(this.name);
+    };
+    r.itemHTML = function() {
+        return "<p>"+ion.pluralize(this.name)+"</p>";
     };
     r.gangString = function() {
         var b = Builder(this);
@@ -7904,9 +7675,11 @@ ion.models.Relationship = function(older, younger, rel) {
         b("p", {}, function(b) {
             gangName.call(this, b);
         });
-        b(this.members, function(b, m, index) {
-            b("p", {}, function(b) {
-                combatantString.call(m, b, m);    
+        b("div", {class: "more"}, function(b) {
+            b(this.members, function(b, m, index) {
+                b("p", {}, function(b) {
+                    combatantString.call(m, b, m);    
+                });
             });
         });
         return b.toString();
@@ -7950,25 +7723,96 @@ ion.models.Relationship = function(older, younger, rel) {
     r.bagHTML = function() {
         return '<p class="bag">'+this.toString()+'</p>';
     };
+    r.bagForSaleString = function() {
+        var string = "", cash = 0;
+        if (this.entries.length) {
+            var items = false,
+                len = this.entries.filter(function(entry) {
+                    return entry.item.not('cash');
+                }).length;
+            this.entries.forEach(function(entry) {
+                if (entry.item.is('cash')) {
+                    cash += (entry.item.value*100) * entry.count;
+                } else {
+                    items = true;
+                    string += ion.pluralize(entry.item, entry.count);
+                    // begin specific difference with above
+                    if (string.substring(string.length-1) === ")") {
+                        string = string.substring(0,string.length-1) + ", ";
+                    } else {
+                        string += " (";
+                    }
+                    if (entry.count === 1) {
+                        string += "¤"+entry.item.value+")";
+                    } else {
+                        string += "¤"+entry.item.value+" each)";    
+                    }
+                    // end. encapsulate somehow.
+                    if (len === 1) {
+                        string += '.';
+                    } else if (len === 2) {
+                        string += ', and ';
+                    } else {
+                        string += ', ';
+                    }
+                    len--;
+                }
+            }, this);
+            if (items && cash) {
+                string += ' ';
+            }
+            if (cash) {
+                string += "$"+cash.toFixed(0)+" in cash.";
+            }
+            string = ion.sentenceCase(string);
+        }
+        if (this.descriptor) {
+            string = (this.descriptor + ". " + string);
+        }
+        return string;        
+    };
     r.storeString = function() {
-        return JSON.stringify(this);
+        var b = Builder(this); // Not as thorough as as the html version
+        b(this.name)(". ");
+        b("Owner(s): " + this.owner.toString());
+        b("Inventory: " + this.inventory.toString())(" ");
+        b("Cash on hand: " + this.onhand.toString());
+        return b.toString();
     };
     r.storeHTML = function() {
         var b = Builder(this);
         b("p", {class: "title"}, this.name);
+        
         b("div", {class: "owner"}, function(b) {
             b("p", {class: "title"}, function(b) { b("Owner(s)"); });
             b(this.owner.toHTML());
+            b("p", {}, this.onhand.toString());
         });
         b("p", {class: "title"}, "For Trade");
+        b(!!this.policy, function() {
+            b("p", {class: "policy"}, this.policy);    
+        });
         b("ul", {class: "inventory"}, function(b) {
             b(this.inventory.entries, function(b, entry) {
-                
+                var string = ion.pluralize(entry.item.name, entry.count);
+                if (string.substring(string.length-1) === ")") {
+                    string = string.substring(0,string.length-1) + ", ";
+                } else {
+                    string += " (";
+                }
+                if (entry.count === 1) {
+                    string += entry.item.value+"T)";
+                } else {
+                    string += entry.item.value+"T each)";    
+                }
+                b("li", {}, string);
+                /*
                 var str = ion.pluralize(entry.item.name, entry.count) + " (" + ion.pluralize("trade", entry.item.value)+" each)";
                 b("li", {}, str);
+                */
             });
         });
-        b("p", {}, this.onhand.toString());
+        
         return b.toString();
     };
     
@@ -7982,6 +7826,7 @@ ion.models.Relationship = function(older, younger, rel) {
     m.Relationship.prototype.toString = r.relString;
     m.Relationship.prototype.toHTML = r.relHTML;
     m.Item.prototype.toString = r.itemString;
+    m.Item.prototype.toHTML = r.itemHTML;
     m.Weather.prototype.toString = r.weatherString;
     m.Weather.prototype.toHTML = r.weatherHTML;
     m.Gang.prototype.toString = r.gangString;
@@ -7990,6 +7835,421 @@ ion.models.Relationship = function(older, younger, rel) {
     m.Store.prototype.toHTML = r.storeHTML;
     
 })(ion, ion.models, ion.Builder, ion.models.Character, ion.models.Relationship);
+(function(ion, RarityTable, Item) {
+    
+    ion.db = ion.db || {};  
+    
+    var REMOVE_BRACES = /\{.*\}|\(.*\)/g,
+        REMOVE_WHITESPACE = /\W|\s/g;
+    
+    function matchesTags(terms, model) {
+        // Star is not necessary. If you pass no terms in, it still matches.
+        var result = ((terms.ands.length === 1 && terms.ands[0] === "*") ||
+           ((ion.intersection(model.tags, terms.ands).length === terms.ands.length) &&
+            (ion.intersection(model.tags, terms.nots).length === 0))
+        );
+        if (!result && terms.or) {
+            return matchesTags(terms.or, model);
+        }
+        return result;        
+    }
+    // This really just loops, matches and returns without knowing anything about it.
+    function finder(params) {
+        var results = new RarityTable(ion.identity, false);
+        for (var i=0, len = this.models.length; i < len; i++) {
+            var model = this.models[i];
+            if (matchesTags(params.tags, model) && this.matches(params, model)) {
+                results.add(model.frequency, model);
+            }
+        }
+        return results;
+    }
+    function getMemo() {
+        return {ands: [], nots: []};
+    }
+    function split(string) {
+        return string.trim().toLowerCase().split(/\s+/);
+    }
+    function parseTags(arg) {
+        var memo = getMemo();
+        if (ion.isString(arg) && arg !== "") {
+            memo = split(arg).reduce(this.cbTagCollector, memo);
+        } /*else if (ion.isArray(arg)) {
+            // TODO: This makes no sense to me, it's just consuming the first element
+            // of the array. Why is this here, why do tests break without it? 
+            var newMemo = parseTags.apply(this, arg);
+            memo.ands = memo.ands.concat(newMemo.ands);
+        }*/
+        return memo.ands;
+    }
+    function tagCollector(memo, tag) {
+        if (tag === "|") {
+            var newMemo = getMemo();
+            memo.or = newMemo;
+            return newMemo;
+        }
+        if (this.lookupArray) {
+            tag = this.lookupArray[parseInt(tag,10)] || tag;
+        }
+        if (tag.charAt(0) === "-") {
+            memo.nots.push(tag.substring(1));
+        } else {
+            memo.ands.push(tag);
+        }
+        return memo;
+    }
+    function buildQuery(params, arg) {
+        if (ion.isString(arg) && arg !== "") {
+            params = split(arg).reduce(this.cbTagCollector, params);
+        } else if (ion.isArray(arg)) {
+            for (var i=0; i < arg.length; i++) {
+                params = split(arg[i]).reduce(this.cbTagCollector, params);
+            }
+        }
+    }
+    function makeSearchName(string) {
+        return string.replace(REMOVE_BRACES,'').replace(REMOVE_WHITESPACE,'').toLowerCase();
+    }
+    function parseQuery() {
+        if (!ion.isUndefined(arguments[0]) && arguments[0].ands) {
+            return arguments[0];
+        }
+        var params = getMemo();
+        for (var i=0; i < arguments.length; i++) {
+            buildQuery.call(this, params, arguments[i]);
+        }
+        return params;
+    }
+    function getClustering(tags) {
+        var prefix = "cluster:";
+        return tags.filter(function(tag) {
+            return (tag.indexOf(prefix) > -1);
+        })[0].substring(8);
+    }
+
+    ion.db.Database = ion.define({
+        /**
+         * A basic models database that provides a pretty complete ability to search for models 
+         * by their tags.
+         *  
+         * Your model specs that you register with the db can include string tags, such as 
+         * "ElectricalEngineering" or "common", but these tags (which are usually declared over and 
+         * over in your models specs) quickly increase your JS file size. 
+         * 
+         *      // kinda bad
+         *      db.register("coffee cup!1!.5!common house br");
+         * 
+         * If you provide an array of tags in the constructor for `Database` or one of its 
+         * subclasses, then you can refer to those tags by their index in the same array, which 
+         * reduces the size of data files.:
+         * 
+         *      // potentially better
+         *      var db = new ItemDatabase(['uncommon','common','house','br']);
+         *      db.register("coffee cup!1!.5!1 3 4");
+         * 
+         * @class ion.db.Database
+         * @constructor
+         * 
+         * @param tags {Array} an array of tags
+         */
+        init: function(tags, strategy) {
+            this.models = [];
+            this.lookupArray = tags || [];
+            this.cbTagCollector = tagCollector.bind(this);
+        },
+        /**
+         * @for ion.db.Database
+         * @method matches
+         * 
+         * @param params {Object} conditions to match (tags are handled by the base class, 
+         *      but sub-classed DBs can look at other conditions).
+         * @param model {ion.models.Model} the model object to examine (will be the type 
+         *      handled by the specific database implementation).
+         * @return {Boolean} true if it matches, false otherwise
+         */
+        matches: ion.identity,
+        /**
+         *  Register models with the database. The exact arguments and format varies by the 
+         *  type of model (different models implement this with different subclasses).
+         *
+         *  @for ion.db.Database
+         *  @method register
+         *  
+         */
+        register: ion.identity,
+        /**
+         * Find a single model in this database.
+         * TODO: Documentation is wrong
+         * 
+         * @for ion.db.Database
+         * @method find
+         * 
+         * @param tags {String} tags to match
+         * @return {ion.models.Model} a single model object that matches, returned according 
+         *      to its frequency
+         */ 
+        find: function(params) {
+            return this.findAll(params).get();
+        },
+        /**
+         * Find all models that match in the database, returned in a `ion.tables.RarityTable`
+         * instance.
+         * TODO: Documentation is wrong
+         * 
+         * @for ion.db.Database
+         * @method findAll
+         * 
+         * @param tags {String} tags to match
+         * @return {ion.tables.RarityTable} all matching models in a rarity table.
+         */ 
+        findAll: function(params) {
+            if (ion.isString(params) || ion.isArray(params)) {
+                params = {tags: params};
+            }
+            params.tags = parseQuery.call(this, params.tags);
+            return finder.call(this, params);
+        }
+    });
+
+    ion.db.ItemDatabase = ion.define(ion.db.Database, {
+        /**
+         * 
+         * @class ion.db.ItemDatabase
+         * @extends ion.db.Database
+         * 
+         * @constructor
+         * @param tags {Array} an array of tags
+         */
+        init: function(tags) {
+            ion.db.Database.call(this, tags);
+        },
+        matches: function(params, model) {
+            return !((ion.isNumber(params.minValue) && model.value < params.minValue) ||
+                     (ion.isNumber(params.maxValue) && model.value > params.maxValue) ||
+                     (ion.isNumber(params.minEnc) && model.enc < params.minEnc) ||
+                     (ion.isNumber(params.maxEnc) && model.enc > params.maxEnc));
+        },
+        /**
+         * In addition tags, there are some other conditions you can specify for finding an item.
+         * 
+         * @method find
+         * @for ion.db.ItemDatabase
+         * 
+         * @param [params] {Object}
+         *      @param [params.tags] {String} one or more tag strings, either to be matched, or to be 
+         *          excluded (if they start with a "-"). Can also be an array of individual tag strings.
+         *      @param [params.minValue=0] {Number} the minimum value a matching item can have
+         *      @param [params.maxValue=Number.MAX_VALUE] {Number} the maximum value a matching item can have
+         *      @param [params.minEnc=0] {Number} the minimum encumbrance a matching item can have
+         *      @param [params.maxEnc=Number.MAX_VALUE] {Number} the maximum encumbrance a matching item can have
+         * 
+         * @return {ion.models.Item} an item that matches the query
+         */
+        /**
+         * In addition tags, there are some other conditions you can specify for finding an item.
+         * 
+         * @method findAll
+         * @for ion.db.ItemDatabase
+         * 
+         * @param [params] {Object}
+         *      @param [params.tags] {String} one or more tag strings, either to be matched, or to be 
+         *          excluded (if they start with a "-"). Can also be an array of individual tag strings.
+         *      @param [params.minValue=0] {Number} the minimum value a matching item can have
+         *      @param [params.maxValue=Number.MAX_VALUE] {Number} the maximum value a matching item can have
+         *      @param [params.minEnc=0] {Number} the minimum encumbrance a matching item can have
+         *      @param [params.maxEnc=Number.MAX_VALUE] {Number} the maximum encumbrance a matching item can have
+         * 
+         * @return {Array} an array of all items that matches the query
+         */
+        /** 
+         * Register one or more items (via a short, string-based item specification format) with the 
+         * search facilities of the library. Once these items are registered, they can be found through 
+         * the `ion.queryForItem()` method; other more complex methods for 
+         * creating treasure/loot are based on this functionality. 
+         * 
+         *     db.register(
+         *       "35mm camera!10!.5!common household ammo-35mm", 
+         *       "fancy lad cake!1!1!common preserved food luxury"
+         *     );
+         * 
+         * **Specification**
+         * 
+         * `name1; name2!value!encumbrance!tags`
+         * 
+         * The first tag must always be `common`, `uncommon` or `rare`. If a `br` tag is included, 
+         * this indicates that the item can be found broken, and it will be added to the 
+         * database twice (once intact, and once broken).
+         * 
+         * @method register
+         * @for ion.db.ItemDatabase
+         * 
+         * @param item* {String} One or more item strings
+         */        
+        register: function() {
+            // optimizing on some things, like avoiding push, using for, etc.
+            for (var i=0, len = arguments.length; i < len; i++) {
+                var string = arguments[i],
+                    parts = string.split('!'),
+                    names = parts[0].trim().split(/\s*;\s*/),
+                    tags = parseTags.call(this, parts[3]),
+                    breakable = tags.indexOf("br") > -1,
+                    params = {
+                        value: parseFloat(parts[1]),
+                        enc: parseFloat(parts[2]),
+                        frequency: tags.shift()
+                    };
+                for (var j=0, len2 = names.length; j < len2; j++) {
+                    params.name = names[j];
+                    
+                    params.tags = ion.without(tags, 'br');
+                    params.tags.push(makeSearchName(params.name));
+                    this.models[this.models.length] = new Item(params);
+                }
+                
+                if (!breakable) { continue; }
+
+                params.tags = params.tags.concat(['br']);
+                // creating bags fail if items don't have at least some value.
+                //params.value = ~~(params.value/2);
+                params.value = Math.max(0.5, ~~(params.value/2));
+                for (j=0, len2 = names.length; j < len2; j++) {
+                    params.name = "broken " + names[j];
+                    params.tags = [makeSearchName(params.name)].concat(tags);
+                    this.models[this.models.length] = new Item(params);
+                }
+            }
+        }
+    });
+    
+    ion.db.StoreDatabase = ion.define(ion.db.Database, {
+        init: function(params) {
+            ion.db.Database.call(this, params);
+        },
+        register: function() {
+            for (var i=0, len = arguments.length; i < len; i++) {
+                var parts = arguments[i].split('!'),
+                    names = parts[0].trim().split(/\s*;\s*/),
+                    policy = parts[1],
+                    owner_profession = parts[2],
+                    owner_trait = parts[3],
+                    bag_query = parts[4],
+                    bag_total_value = parseInt(parts[5], 10),
+                    tags = parseTags.call(this, parts[6]),
+                    frequency = tags.shift();
+                
+                // So you can search for a store by name (converted to tags)
+                for (var j=0; j < names.length; j++) {
+                    tags[tags.length] = ion.toTag(names[j]);
+                }
+                var owner = {};
+                if (owner_profession) { owner.profession = owner_profession; }
+                if (owner_trait) {
+                    owner.traits = {};
+                    owner.traits[owner_trait] = ion.roll(3)+1;
+                }
+                var inventory = { 
+                    tags: bag_query, 
+                    fillBag: false, 
+                    cluster: getClustering(tags) 
+                };
+                if (!isNaN(bag_total_value)) {
+                    inventory.totalValue = bag_total_value; 
+                }
+                
+                this.models[this.models.length] = {
+                    frequency: frequency, 
+                    names: names, 
+                    policy: policy,
+                    owner: owner,
+                    tags: tags,
+                    inventory: inventory
+                };
+            }
+        }
+    });
+    
+    ion.db.ProfessionDatabase = ion.define(ion.db.Database, {
+        /**
+         * 
+         * @class ion.db.ProfessionDatabase
+         * @extends ion.db.Database
+         * 
+         * @constructor
+         * @param tags {Array} an array of tags
+         */
+        init: function(params) {
+            ion.db.Database.call(this, params);
+        },
+        /**
+         * Register a profession. Once the professions are registered, they can be found by their 
+         * tags by searching the database. The names of the profession are also added as tags, 
+         * so "Coast Guard" (as a profession name) could be found with the tag `CoastGuard`.
+         * 
+         * Each profession has two parameters that are passed in as a couple. The first is the 
+         * spec described below; the second is a post-training function that may be called to 
+         * do profession-specific alteration of the character. This is a string that is interpreted 
+         * as the body of a function that is passed one parameter: `c` for the character object..
+         *  
+         *     // Tags were registered with db.registerTags(), so they can be referenced
+         *     // by index, either base-10 or base-36.
+         *     db.register(ion.models.Profession,
+         *       "Doctor!46!4d 4h 4i 2u 3r!2 5f 21 2r 2s", "c.honorific = 'Doctor';", 
+         *     );
+         *     
+         * **Specification**
+         * 
+         * `name1; name2!seed traits!supplemental traits!tags`
+         * 
+         * Seed traits are traits that members of the profession will always have to some degree 
+         * or another. The supplemental traits are other qualities that may be picked up during 
+         * participation in the profession. Finally, tags may be associated with the profession. 
+         * The first tag must always be `common`, `uncommon` or `rare`.
+         * 
+         * @method register
+         * @for ion.db.ProfessionDatabase
+         * 
+         * @param class {ion.models.Profession} a profession class or subclass that implements
+         *      game-specific training for a character.
+         * @param spec {String} one or more strings specifying professions to include.
+         * @param function {String} function body of a post-training processing method.
+         */        
+        register: function() {
+            var clazz = arguments[0];
+            
+            for (var i=1, len = arguments.length; i < len; i += 2) {
+                var parts = arguments[i].split('!'),
+                    names = parts[0].trim().split(/\s*;\s*/),
+                    seeds = parseTags.call(this, parts[1]),
+                    traits = parseTags.call(this, parts[2]),
+                    tags = parseTags.call(this, parts[3]),
+                    freq = tags.shift(),
+                    func = arguments[i+1] ? new Function("c", arguments[i+1]) : ion.identity;
+                    
+                // So you can search for professions by name (converted to tags)
+                for (var j=0; j < names.length; j++) {
+                    tags[tags.length] = ion.toTag(names[j]);
+                }
+                this.models[this.models.length] = new clazz({
+                    names: names, tags: tags, seeds: seeds, supplements: traits, postprocess: func, frequency: freq
+                });
+            }
+        }
+    });
+    
+    ion.db.EncounterDatabase = ion.define(ion.db.Database, {
+        init: function(params) {
+            ion.db.Database.call(this, params);
+        },
+        register: function() {
+            for (var i=0, len = arguments.length; i < len; i++) {
+                var parts = arguments[i].split('!');
+                this.models[this.models.length] = {};
+            }
+        }
+    });
+    
+})(ion, ion.tables.RarityTable, ion.models.Item);
+
 /**
  * Create game objects for a retro-futuristic postholocaust game, as made popular by the 
  * Fallout video games, or possibly for any 50s science fiction game, such as Cosmic 
@@ -7997,8 +8257,7 @@ ion.models.Relationship = function(older, younger, rel) {
  * 
  * @class atomic
  */
-var atomic = {
-};
+var atomic = {};
 
 /**
  * Create game objects for a fantasy/medieval setting, like Dungeons &amp; Dragons or any 
@@ -8018,13 +8277,14 @@ ion.models.AtomicProfession = (function(ion, Profession) {
     return ion.define(Profession, {
         /**
          * 
-         * A sub-class of profession that handles assigning rank for a variety of professions, 
-         * such a the military and the police.
+         * A sub-class of profession that handles assigning rank for professions such as 
+         * the military and police.
          * 
          * @class ion.models.AtomicProfession
          * @extends ion.models.Profession
          * 
          * @constructor
+         * @param params {Object}
          */
         init: function(params) {
             Profession.call(this, params || {});
@@ -8036,306 +8296,369 @@ ion.models.AtomicProfession = (function(ion, Profession) {
          * @for ion.models.AtomicProfession
          */
         assignRank: function(character) {
-            var name = this.names[0],
-                honorific = name + ' ';
+            var name = this.names[0], rank = null;
             
             // Could use gaussian spread here.
             var level = Math.round(Math.max(character.trait("Military"), character.trait("Government")) * 1.5);
             
             // Could use a table here.
             if (name === "Navy" || name === "Coast Guard") {
-                honorific += navyRanks[ion.roll(level)];
+                rank = navyRanks[ion.roll(level)];
             } else if (name === "Police") {
-                var ranks = policeRanks[ion.roll(level)];
-                if (ranks instanceof Array) {
-                    ranks = ion.random(ranks);
+                rank = policeRanks[ion.roll(level)];
+                if (rank instanceof Array) {
+                    rank = ion.random(rank);
                 }
-                honorific += ranks;
             } else {
-                honorific += milRanks[ion.roll(level)];
+                rank = milRanks[ion.roll(level)];
             }
-            character.honorific = honorific;
-            return honorific;
+            character.honorific = (rank) ? name + ' ' + rank : name;
         }
     });
     
 })(ion, ion.models.Profession);
 
 
-// Move to The Codex.
-window.c_locations = ['Agricultural','Automotive','Civic','Criminal','Garage','Hospital','House','Industrial','Institution','Lodging','Military','Office','Public','Research','Restaurant','School','Settlement','Store','Tourism','Travel'];
-window.c_profs = ['Air Force', 'Army', 'Bounty Hunter', 'Coast Guard', 'Courier', 'Craftsperson', 'Doctor', 'Homesteader', 'Marine', 'Mayor', 'Mechanic', 'Miner', 'Navy', 'Police', 'Raider', 'Rancher', 'Scavenger', 'Scientist', 'Settler', 'Thief', 'Trader', 'Tradesperson'];
+atomic.getPlaces = function() { return ['Agricultural','Automotive','Civic','Criminal','Garage','Hospital','House','Industrial','Institution','Lodging','Military','Office','Public','Research','Restaurant','School','Tourism','Travel']; };
+atomic.getLocations = function() { return ['Encampment', 'Roadside', 'Settlement']; };
 
-ion.itemDb = new ion.models.ItemDatabase(['ammo','ammo:22','ammo:30','ammo:308','ammo:357','ammo:38','ammo:44','ammo:45','ammo:fusion','ammo:laser','ammo:pulse','ammo:shell','armor','br','bundled','heavy','nobr','unique','accessories','body','coat','feet','head','con','con:35mm','con:battery','con:polaroid','food','fresh','preserved','ration','common','rare','uncommon','female','male','cash','clothing','communications','container','currency','drug','explosive','jewelry','medical','sport','tool','toy','kit:courier','kit:craftsperson','kit:doctor','kit:electrician','kit:gunslinger','kit:homesteader','kit:leader','kit:mechanic','kit:miner','kit:personal','kit:police','kit:raider','kit:rancher','kit:scavenger','kit:scientist','kit:settler','kit:soldier','kit:thief','kit:trader','kit:vagrant','agricultural','automotive','civic','criminal','garage','hospital','house','industrial','institution','lodging','military','office','public','research','restaurant','school','settlement','store','tourism','travel','hand','huge','large','medium','miniscule','small','tiny','historical','luxury','scifi','secured','useful','firearm','melee','pistol','rifle','shotgun','smg']);
+ion.itemDb = new ion.db.ItemDatabase(['ammo','ammo:22','ammo:30','ammo:308','ammo:357','ammo:38','ammo:44','ammo:45','ammo:fusion','ammo:laser','ammo:pulse','ammo:shell','armor','agricultural','automotive','civic','criminal','garage','hospital','house','industrial','institution','lodging','military','office','public','research','restaurant','school','tourism','travel','br','bundled','heavy','nobr','unique','accessories','body','coat','feet','head','con','con:35mm','con:battery','con:polaroid','food','fresh','meat','prepared','preserved','ration','common','rare','uncommon','female','male','alcohol','camping','cash','clothing','communications','container','currency','drug','explosive','jewelry','medical','pottery','sport','tool','toy','kit:courier','kit:craftsperson','kit:doctor','kit:electrician','kit:gunslinger','kit:homesteader','kit:leader','kit:mechanic','kit:miner','kit:personal','kit:police','kit:raider','kit:rancher','kit:scavenger','kit:scientist','kit:settler','kit:soldier','kit:thief','kit:trader','kit:vagrant','hand','huge','large','medium','miniscule','small','tiny','historical','luxury','scifi','secured','useful','firearm','melee','pistol','rifle','shotgun','smg']);
 ion.itemDb.register(
-"$1 bill!.01!0!31 36 40",  
-"$1 casino chip!.2!0!33 40",  
-"$10 bill!.1!0!33 36 40",  
-"$10 casino chip!2!0!33 40",  
-"$100 bill!1!0!32 36 40",  
-"$20 bill!.2!0!33 36 40",  
-"$25 casino chip!5!0!32 40",  
-"$5 bill!.05!0!31 36 40",  
-"$5 casino chip!1!0!32 40",  
-".22 caliber bullet!1!.5!33 0 1",  
-".30 caliber bullet!1!.5!33 0 2",  
-".357 caliber bullet!1!.5!33 0 4",  
-".38 caliber bullet!1!.5!33 0 5",  
-".44 caliber bullet!1!.5!33 0 6",  
-".45 caliber bullet!1!.5!33 0 7",  
-"American flag!1!3!31 70 76 78 80 83 17",  
-"Boss of the Plains hat!6!.5!32 37 22 54 63 35 80",  
-"Dutch Lad snack cake!6!1!32 27 74 96 29 30",  
-"Kit-Cat klock; Tiki statue!1!3!33 74 84 85",  
-"Kooba Kid comic book; Bubbles and Yanks comic book; Volto from Mars comic book; Clutch Cargo comic book!6!.5!32 72 74 57",  
-"M1 Rifle; M1 Carbine!12!10!32 2 13 100 64 103",  
-"M14 Rifle!12!10!32 3 13 100 64 103",  
-"M1911 Pistol!9!3!32 7 13 100 54 64 102",  
-"Remington .44 Magnum Pistol; Smith & Wesson .44 Magnum Pistol; Colt .44 Magnum Pistol!9!3!32 6 13 100 48 52 54 56 58 59 61 63 66 102",  
-"Remington 870 Shotgun; Winchester 1897 Shotgun; Winchester Model 12 Shotgun!9!10!32 11 13 100 72 74 48 56 58 59 61 63 66 104",  
-"Remington Rifle!12!10!32 68 1 13 100 72 74 48 52 53 56 59 60 61 63 66 103",  
-"Ruger .22 Pistol!9!3!32 1 13 100 50 56 62 63 65 66 102",  
-"Ruger Single Six Revolver!9!3!32 1 13 100 48 56 60 61 63 66 67 102",  
-"Smith & Wesson .357 Magnum Pistol; Colt .357 Magnum Pistol!9!3!32 4 13 100 52 54 56 58 59 61 63 65 66 102",  
-"Smith & Wesson .38 Special Revolver; Colt Detective Special Revolver!9!3!32 5 13 100 48 49 50 51 54 55 56 58 61 63 65 66 102",  
-"Smith & Wesson Service Revolver; Colt Service Pistol!9!3!32 7 13 100 48 49 50 51 55 56 58 61 62 63 66 67 102",  
-"Springfield Rifle!12!10!32 2 13 100 48 52 61 64 103",  
-"Thompson Submachine Gun; M3 Submachine Gun; Browning Automatic Rifle!12!10!32 7 13 100 64 105",  
-"Twinkle Cake!3!1!33 27 74 29 30 83 86 87",  
-"Winchester Rifle!12!10!32 68 3 13 100 72 74 48 52 53 56 60 61 63 66 103",  
-"apple pie; cherry pie; peach pie!4!3!33 68 27 28 96 84",  
-"apple; pear; nectarine; orange; peach{es}; plum!4!.5!31 27 28 63 96",  
-"ashtray!1!1!31 74",  
-"axe; pickaxe!3!20!33 68 72 15 56 101 46",  
-"backpack!11!10!31 39 74 48 61 67 77 78 84 87 99",  
-"bag{s} of sugar!11!3!32 27 74 29 99",  
-"bandana; baseball cap!1!.5!31 37 34 22 74 48 49 51 53 55 56 59 60 61 63 65 67 35",  
-"baseball bat!3!3!31 72 48 53 59 61 65 67 101 45",  
-"baseball; softball; tennis ball!1!1!31 74 80 83 84 45",  
-"batter{y|ies}!3!.5!33 23 25",  
-"bayonet!3!1!31 64 101",  
-"belt{s} with large silver buckle{s}!3!.5!33 18 37 52 60 35",  
-"beret; boonie hat; garrison cap; patrol cap!1!.5!31 37 34 22 64 35 78",  
-"boater's straw hat; Panama straw hat!3!.5!33 70 37 22 74 50 53 54 62 63 66 67 77 35 80",  
-"bolo tie!1!.5!31 18 37 74 52 60 66 77 35 84",  
-"book!3!3!31 95 83",  
-"book{s} of cattle brands!1!1!31 60 17",  
-"boomerang; bubble gum cigar; frisbee; hula hoop; Hopalong Cassidy cap gun; coonskin cap; slinky!1!3!33 74 84 85 47",  
-"bottle{s} of milk!1!3!31 27 28 74 63",  
-"bottle{s} of scotch; bottle{s} of whiskey; bottle{s} of vodka; bottle{s} of wine!13!10!33 41 74 57 96",  
-"bowling ball!6!20!32 15 74 80 45",  
-"box{es} of .22 ammo (20 rounds)!30!3!32 0 1 14",  
-"box{es} of .30 ammo (20 rounds)!30!3!32 0 2 14",  
-"box{es} of .308 ammo (20 rounds)!30!3!32 0 3 14",  
-"box{es} of .357 ammo (20 rounds)!30!3!32 0 4 14",  
-"box{es} of .38 ammo (20 rounds)!30!3!32 0 5 14",  
-"box{es} of .44 ammo (20 rounds)!30!3!32 0 6 14",  
-"box{es} of .45 ammo (20 rounds)!30!3!32 0 7 14",  
-"box{es} of Sugar Jets cereal!3!3!33 27 74 29",  
-"box{es} of Velveteena cheese!6!3!33 27 73 74 96 29 82 85",  
-"box{es} of candies!9!3!32 74 96",  
-"box{es} of candles!9!3!31 72 74 56 61 99",  
-"box{es} of chocolates!6!3!32 27 74 96 29",  
-"box{es} of hardtack!9!3!33 27 78 30 99",  
-"box{es} of matches!3!.5!31 71 72 74 57 59 60 61 63 65 46 99",  
-"box{es} of shotgun shells (20 shells)!30!3!32 0 11 14",  
-"box{|es} of toaster pastries!3!3!33 27 74 29 30",  
-"bracelet!10!1!33 43 98",  
-"briefcase!1!10!31 13 70 79 80 81",  
-"bucket hat; coonskin cap!3!.5!33 37 34 22 48 53 59 61 63 66 67 35",  
-"bulletproof vest!11!10!33 12 13 71 58 61 64 99",  
-"business suit!1!3!31 19 37 74 54 63 77 35",  
-"butcher's kni{fe|ves}!3!3!31 74 63 101 82",  
-"camera!3!3!33 13 24 57",  
-"canteen; water bottle!1!3!31 57 78 85",  
-"can{s} of Brylcreem!3!1!33 74 57",  
-"can{s} of Fido dog food!3!3!31 27 74 29",  
-"can{s} of Rinso Detergent!1!3!31 74",  
-"can{s} of coffee; jar{s} of instant coffee!6!3!32 27 74 96 29",  
-"can{s} of milk; can{s} of pork & beans; box{es} of crackers; can{s} of wham!3!3!31 27 74 29",  
-"can{|s} of mace; can{|s} of pepper spray!3!1!33 49 50 51 54 55 62 63 65 101",  
-"carton{s} of cigarettes!150!3!32 41 96",  
-"casualwear outfit!1!3!31 19 37 34 74 63 77 35",  
-"cigarette lighter!3!.5!31 71 74 57 63 46 99",  
-"clipboard!1!3!31 79",  
-"coat; overcoat; parka; windbreaker!1!3!31 68 70 37 20 34 73 74 75 76 53 57 58 77 35 79 80 82 84",  
-"coffee mug!1!1!31 74 79",  
-"coffee pot!1!3!31 74",  
-"coil{s} of rope (50 feet)!3!10!33 68 72 84 46",  
-"comb; handkerchief!1!.5!31 74 57",  
-"combat helmet!1!.5!31 12 37 34 22 59 61 64 35 78",  
-"compass!6!.5!32 72",  
-"cowboy hat!1!.5!31 68 37 34 22 52 60 35",  
-"crowbar; tire iron!3!6!31 72 15 59 61 101 46",  
-"crutch{es}!3!10!33 44",  
-"dagger!3!1!31 52 59 61 63 64 65 101",  
-"day pack!11!10!31 70 39 74 75 48 49 51 55 56 59 61 63 65 67 77 78 83 84 87 99",  
-"day{s} of C rations!11!6!31 27 15 78 29 30 99",  
-"death ray!27!3!32 8 13 100 102 81 97",  
-"deck{s} of playing cards!6!1!31 71 74 57 99",  
-"denim jacket!1!.5!31 37 20 34 49 51 55 65 67 35",  
-"doctor's bag!1!10!31 18 37 39 34 73 50 35",  
-"duster; buckskin coat; poncho!3!.5!33 68 37 20 34 48 52 59 60 66 35",  
-"egg; potato{es}!1!.5!31 27 28",  
-"empty fuel can!1!10!31 69 39 72 75 48",  
-"fedora; flat cap; porkpie hat!1!.5!31 37 22 74 50 54 62 63 66 67 77 35 80 84 87",  
-"fire axe!3!10!33 69 70 71 73 75 76 49 51 55 56 61 67 101 78",  
-"fire extinguisher!1!15!31 69 70 71 15 73 75 76 77 78 79 80 81 83 87",  
-"first aid kit!13!10!33 44 99",  
-"flashlight!6!1!31 69 13 70 25 72 74 75 76 57 81 84 46 99",  
-"floral dress; jumper{s} with {a |}blouse{s}; jumper{s} with {a |}T-shirt{s}; skirt{s} and blouse{s}; prairie skirt{s} and blouse{s}; shirtwaist dress!1!.5!31 19 37 34 49 50 53 54 62 63 66 67",  
-"football; tennis racket!1!10!31 74 80 83 84 45",  
-"force field belt!15!1!32 12 13 81 97",  
-"gas mask!1!3!33 12 13 58 64 78",  
-"geiger counter!11!3!33 13 75 56 61 62 64 81 46 99",  
-"gold krugerrand!10!1!33 40 15 98",  
-"gravity rifle!36!20!32 8 13 100 15 78 81 103 97",  
-"hand grenade!3!1!33 42 59 61 64 78",  
-"hard hat{s} with lamp{s}; hard hat!3!.5!33 37 34 22 75 56 35",  
-"hockey mask!1!3!33 12 59",  
-"hoe; rake; shovel!3!10!33 68 72 63 101 46",  
-"holster!3!1!33 18 37 34 52 57 64 35 17",  
-"house deed!6!1!32 98",  
-"hunting kni{fe|ves}!3!1!31 52 53 54 60 61 63 66 67 101",  
-"ice pick!3!20!33 72 15 101 46",  
-"jar{s} of Ersatz instant coffee!6!3!32 70 27 74 96 79 29 30 87",  
-"jar{s} of Gusto pasta sauce; box{es} of Gusto spaghetti; jar{s} of Gusto olives; box{es} of Gusto bread sticks; can{s} of Gusto ravioli!3!3!31 27 74 29 82 85",  
-"jar{s} of jam!1!1!31 27 28 74 82",  
-"jug{s} of moonshine!10!10!33 68 41 57",  
-"jumpsuit; {|}work coveralls!1!3!31 68 69 19 37 34 75 76 49 51 55 56 61 35",  
-"knife; fork; spoon!1!1!31 74 82",  
-"lab coat!1!3!31 37 20 34 73 76 50 62 35 81",  
-"lariat!1!3!31 60 17",  
-"laser pistol!27!3!32 9 13 100 62 64 102 81 97",  
-"laser rifle!36!10!32 9 13 100 64 81 103 97",  
-"letter sweater!3!.5!33 37 20 34 63 35",  
-"loa{f|ves} of bread!1!3!31 27 28 63",  
-"lockpick set!11!1!32 71 65 46 99",  
-"lunchbox{es}!3!10!33 74",  
-"magazine!3!3!31 95 87",  
-"medical brace!3!10!33 44",  
-"metal detector!6!10!32 13 72 61 78 84 46 17",  
-"military helmet!9!3!33 12 61 64 99",  
-"motorcycle helmet; football helmet!9!3!33 12 72 59 61 99",  
-"motorcycle jacket!11!3!33 37 20 34 72 48 52 59 61 35 99",  
-"mouse trap!3!1!33 72 74 46",  
-"necklace!12!1!33 43 98",  
-"newspaper!3!3!31 69 70 71 72 95 73 74 75 76 77 78 79 80 82 85 86 87",  
-"notebook; journal; sketchbook!6!3!32 69 70 73 74 76 57 78 79 81 83 84 86 17",  
-"pack{s} of chemical light sticks (5 sticks)!8!1!33 72 48 51 55 56 58 61 67 84 46 99",  
-"pack{s} of chewing gum; pack{s} of Blackjack chewing gum!6!.5!32 27 57 96 29 30 86 87",  
-"pack{s} of cigarettes!13!1!33 41 57 96",  
-"pair{s} of safety goggles!6!1!32 37 34 22 75 62 35 81",  
-"peaked cap; campaign hat!1!.5!31 70 37 34 22 58 35",  
-"pencil; pen!1!1!31 79 83",  
-"pipe; chain!3!3!33 72 75 59 101",  
-"pitchfork!3!10!33 68 46",  
-"plastic cup; glass!1!3!31 13 74 82 83 84",  
-"plate!1!3!31 74 82",  
-"polaroid camera!3!3!33 13 70 26 74 76 57 77 80 81 84 86 87",  
-"police baton; nightstick!3!3!33 58 101",  
-"police uniform!1!3!31 19 70 37 34 58 35",  
-"pool table!24!80!32 15 74 99",  
-"portable stove!3!3!33 13 72 48 61 66 67 45",  
-"portable water purification filter!14!3!32 13 84 46 99",  
-"pressure cooker; hot plate!6!10!32 13 74",  
-"pulse pistol!27!6!32 10 13 100 15 62 64 102 81 97",  
-"pulse rifle!36!20!32 10 13 100 15 64 81 103 97",  
-"purse; handbag!1!3!31 70 39 74 77 79 80 85 87",  
-"rabbit's {foot|feet}; {|pairs of }Starlight Casino dice; deck{s} of Elvis Presley playing cards; poker chip{s} from the Sands Casino in Reno; Gideon's bible; pocket crucifix; St. Jude pendant; St. Christopher figurine; Star of David necklace; {|pairs of }Masonic cufflinks; Order of Odd Fellows tie clip; class ring!3!.5!33 57 17",  
-"radiation suit!13!10!33 13 37 20 34 75 56 61 64 35 81 99",  
-"red Gingham dress; blue Gingham dress; yellow Gingham dress; green Gingham dress; black and white Gingham dress!1!.5!31 19 37 34 49 50 53 54 62 63 66 67",  
-"rifle scope!8!1!33 68 13 74 60 63 99",  
-"ring!7!.5!33 43 98",  
-"road map!1!1!31 69 72 48 52 61 66 67 77 87",  
-"roll{s} of 35mm film (24 shots)!6!.5!32 23 24",  
-"roll{s} of polaroid film (10 shots)!3!1!33 23 26",  
-"safe-cracking kit!20!20!32 13 70 71 61 65 46 99",  
-"scalpel!1!1!31 44 46",  
-"set{s} of horse tack!1!20!31 68",  
-"set{|s} of keys!1!.5!31 69 70 74 75 76 77 78 79 81 83 85 17",  
-"shawl!3!.5!33 68 37 20 34 74 50 53 54 63 66 67",  
-"shiv; switchblade!3!1!31 71 59 61 65 101",  
-"shotgun shell!1!.5!33 0 11",  
-"slab{s} of bacon!1!1!31 27 28 74",  
-"sleeping bag; tent!1!10!31 72 48 61 67",  
-"sombrero!6!.5!32 68 37 22 52 60 67 35",  
-"stick{s} of beef jerky!3!1!31 27 74 29 30",  
-"stick{s} of dynamite!3!1!33 42 75 56",  
-"straw sun hat!3!.5!33 70 37 34 22 74 50 53 54 62 63 66 67 77 80",  
-"stun baton!11!3!32 58 64 101 99",  
-"suit{|s} of riot gear!15!20!33 12 13 70 71 58 61 78 99",  
-"sword; machete!3!3!32 48 63 64 101",  
-"tabletop radio!1!10!31 69 13 70 38 72 74 76 78 84",  
-"teargas grenade!3!1!33 70 42 58",  
-"thermos!11!3!33 72 74 60 61 99",  
-"toaster!1!10!31 13 74",  
-"toy robot!6!3!32 13 25 74 47",  
-"trenchcoat; sports jacket!3!.5!33 37 20 54 35",  
-"walkie-talkie!6!3!32 13 70 38 75 76 54 58 61 64 78 81",  
-"wanted poster!3!.5!33 48 52 58",  
-"will; contract; war bond; passport!1!1!31 98",  
-"wrench{es}; hammer!1!3!31 69 72 75 49 55 61 84 46",  
-"{|pairs of }Mary Jane shoes!1!.5!31 70 37 21 34 74 76 49 50 54 62 63 65 66 67 78",  
-"{|pairs of }black leather shoes!1!.5!31 70 37 21 34 74 76 48 49 50 51 54 55 58 62 63 64 65 66 67 35 78",  
-"{|pairs of }blue suede loafers; {|pairs of }saddle shoes!3!.5!33 37 21 34 63 35",  
-"{|pairs of }chaps!1!.5!31 18 68 37 34 60 35",  
-"{|pairs of }combat boots!1!.5!31 12 37 21 34 48 52 58 59 61 64 67 35 78",  
-"{|pairs of }cowboy boots!1!.5!31 37 21 34 74 48 52 53 54 55 56 59 60 61 63 65 66 67 77 35 84",  
-"{|pairs of }dice!3!.5!31 71 74 57 17 99",  
-"{|pairs of }dog tags!1!.5!31 64 78 17",  
-"{|pairs of }forceps!3!3!33 44 46",  
-"{|pairs of }military fatigues!1!3!31 19 37 34 61 64 35 78",  
-"{|pairs of }night vision goggles!14!3!32 18 13 37 25 34 58 61 64 35 78 99",  
-"{|pairs of }slacks {and a|with} button up shirt{s}!1!.5!31 19 37 74 49 50 62 63 66 67 35",  
-"{|pairs of }work boots!1!.5!31 12 37 21 34 48 52 53 56 58 59 61 63 65 67 35 78",  
-"{|sets of }football pads!11!10!33 12 72 59 61 99",  
-"{|suits of }makeshift metal armor!15!20!32 12 13 71 59 61 99",  
-"{|}binoculars!11!3!33 13 74 48 61 64 99",  
-"{|}bongos; flute!3!3!33 67 17",  
-"{|}brass knuckles!3!1!32 71 59 101",  
-"{|}jeans and a T-shirt; {|}jeans and a button up work shirt; {|}jeans and a flannel shirt; {|}jeans and a western shirt!1!.5!31 19 37 34 74 48 49 51 52 53 55 59 60 61 63 65 66 67 35" 
+"$1 bill!.01!0!51 58 62",  
+"$1 casino chip!.2!0!53 62",  
+"$10 bill!.1!0!53 58 62",  
+"$10 casino chip!2!0!53 62",  
+"$100 bill!1!0!52 58 62",  
+"$20 bill!.2!0!53 58 62",  
+"$25 casino chip!5!0!52 62",  
+"$5 bill!.05!0!51 58 62",  
+"$5 casino chip!1!0!52 62",  
+".22 caliber bullet!1!.5!53 0 1",  
+".30 caliber bullet!1!.5!53 0 2",  
+".357 caliber bullet!1!.5!53 0 4",  
+".38 caliber bullet!1!.5!53 0 5",  
+".44 caliber bullet!1!.5!53 0 6",  
+".45 caliber bullet!1!.5!53 0 7",  
+"American flag!1!3!51 15 21 23 25 28 35",  
+"Boss of the Plains hat!6!.5!52 59 40 77 86 55 25",  
+"Dutch Lad snack cake!6!1!52 45 19 99 49 50",  
+"Kit-Cat klock; Tiki statue!1!3!53 19 ",  
+"Kooba Kid comic book; Bubbles and Yanks comic book; Volto from Mars comic book; Clutch Cargo comic book!6!.5!52 17 19 80",  
+"M1 Rifle; M1 Carbine!12!10!52 2 31 103 87 106",  
+"M14 Rifle!12!10!52 3 31 103 87 106",  
+"M1911 Pistol!9!3!52 7 31 103 77 87 105",  
+"Remington .44 Magnum Pistol; Smith & Wesson .44 Magnum Pistol; Colt .44 Magnum Pistol!9!3!52 6 31 103 71 75 77 79 81 82 84 86 89 105",  
+"Remington 870 Shotgun; Winchester 1897 Shotgun; Winchester Model 12 Shotgun!9!10!52 11 31 103 17 19 71 79 81 82 84 86 89 107",  
+"Remington Rifle!12!10!52 13 1 31 103 17 19 71 75 76 79 82 83 84 86 89 106",  
+"Ruger .22 Pistol!9!3!52 1 31 103 73 79 85 86 88 89 105",  
+"Ruger Single Six Revolver!9!3!52 1 31 103 71 79 83 84 86 89 90 105",  
+"Smith & Wesson .357 Magnum Pistol; Colt .357 Magnum Pistol!9!3!52 4 31 103 75 77 79 81 82 84 86 88 89 105",  
+"Smith & Wesson .38 Special Revolver; Colt Detective Special Revolver!9!3!52 5 31 103 71 72 73 74 77 78 79 81 84 86 88 89 105",  
+"Smith & Wesson Service Revolver; Colt Service Pistol!9!3!52 7 31 103 71 72 73 74 78 79 81 84 85 86 89 90 105",  
+"Springfield Rifle!12!10!52 2 31 103 71 75 84 87 106",  
+"Thompson Submachine Gun; M3 Submachine Gun; Browning Automatic Rifle!12!10!52 7 31 103 87 108",  
+"Twinkle Cake!3!1!53 45 19 49 50 28 29 30",  
+"Winchester Rifle!12!10!52 13 3 31 103 17 19 71 75 76 79 83 84 86 89 106",  
+"apple pie; cherry pie; peach pie!3!3!53 13 45 46 48 ",  
+"apple; pear; nectarine; orange; peach{es}; plum!1!.5!51 45 46 86",  
+"ashtray!1!1!51 19",  
+"axe; pickaxe!3!20!53 13 57 17 33 79 104 69",  
+"backpack!11!10!51 61 19 71 84 90 22 23  30 102",  
+"bag{s} of sugar!11!3!52 45 19 49 102",  
+"bandana; baseball cap!1!.5!51 59 54 40 19 71 72 74 76 78 79 82 83 84 86 88 90 55",  
+"baseball bat!3!3!51 17 71 76 82 84 88 90 104 68",  
+"baseball; softball; tennis ball!1!1!51 19 25 28  68",  
+"batter{y|ies}!3!.5!53 41 43",  
+"bayonet!3!1!51 87 104",  
+"belt{s} with large silver buckle{s}!3!.5!53 36 59 75 83 55",  
+"beret; boonie hat; garrison cap; patrol cap!1!.5!51 59 54 40 87 55 23",  
+"boater's straw hat; Panama straw hat!3!.5!53 15 59 40 19 73 76 77 85 86 89 90 22 55 25",  
+"bolo tie!1!.5!51 36 59 19 75 83 89 22 55 ",  
+"book!3!3!51 98 28",  
+"book{s} of cattle brands!1!1!51 83 35",  
+"boomerang; bubble gum cigar; frisbee; hula hoop; Hopalong Cassidy cap gun; coonskin cap; slinky!1!3!53 19  70",  
+"bottle{s} of milk!1!3!51 45 46 19 86",  
+"bottle{s} of scotch; bottle{s} of whiskey; bottle{s} of vodka; bottle{s} of wine!13!10!53 56 63 19 80 99",  
+"bowling ball!6!20!52 33 19 25 68",  
+"box{es} of .22 ammo (20 rounds)!30!3!52 0 1 32",  
+"box{es} of .30 ammo (20 rounds)!30!3!52 0 2 32",  
+"box{es} of .308 ammo (20 rounds)!30!3!52 0 3 32",  
+"box{es} of .357 ammo (20 rounds)!30!3!52 0 4 32",  
+"box{es} of .38 ammo (20 rounds)!30!3!52 0 5 32",  
+"box{es} of .44 ammo (20 rounds)!30!3!52 0 6 32",  
+"box{es} of .45 ammo (20 rounds)!30!3!52 0 7 32",  
+"box{es} of Sugar Jets cereal!3!3!53 45 19 49",  
+"box{es} of Velveteena cheese!6!3!53 45 18 19 99 49 27",  
+"box{es} of candies!9!3!52 19 99",  
+"box{es} of candles!9!3!51 57 17 19 79 84 102",  
+"box{es} of chocolates!6!3!52 45 19 99 49",  
+"box{es} of hardtack!9!3!53 45 23 50 102",  
+"box{es} of matches!3!.5!51 57 16 17 19 80 82 83 84 86 88 69 102",  
+"box{es} of shotgun shells (20 shells)!30!3!52 0 11 32",  
+"box{|es} of toaster pastries!3!3!53 45 19 49 50",  
+"bracelet!10!1!53 65 101",  
+"briefcase!1!10!51 31 15 24 25 26",  
+"bucket hat; coonskin cap!3!.5!53 59 54 40 71 76 82 84 86 89 90 55",  
+"bulletproof vest!11!10!53 12 31 16 81 84 87 102",  
+"business suit!1!3!51 37 59 19 77 86 22 55",  
+"butcher's kni{fe|ves}!3!3!51 19 86 104 27",  
+"camera!3!3!53 31 42 80",  
+"canteen; water bottle!1!3!51 80 23",  
+"can{s} of Brylcreem!3!1!53 19 80",  
+"can{s} of Fido dog food!3!3!51 45 19 47 49",  
+"can{s} of Rinso Detergent!1!3!51 19",  
+"can{s} of coffee; jar{s} of instant coffee!6!3!52 45 19 99 49",  
+"can{s} of milk; can{s} of pork & beans; box{es} of crackers; can{s} of wham!3!3!51 45 19 49",  
+"can{|s} of mace; can{|s} of pepper spray!3!1!53 72 73 74 77 78 85 86 88 104",  
+"carton{s} of cigarettes!150!3!52 63 99",  
+"casualwear outfit!1!3!51 37 59 54 19 86 22 55",  
+"ceramic cup; ceramic plate; ceramic bowl; large ceramic bowl; pottery cup; pottery bowl; pottery vase; clay figurine!3!6!53 13 31 33 19 67 29",  
+"cigarette lighter!3!.5!51 16 19 80 86 69 102",  
+"clipboard!1!3!51 24",  
+"coat; overcoat; parka; windbreaker!1!3!51 13 15 59 38 54 18 19 20 21 76 80 81 22 55 24 25 27 ",  
+"coffee mug!1!1!51 19 24",  
+"coffee pot!1!3!51 19",  
+"coil{s} of rope (50 feet)!3!10!53 13 17  69",  
+"comb; handkerchief!1!.5!51 19 80",  
+"combat helmet!1!.5!51 12 59 54 40 82 84 87 55 23",  
+"compass!6!.5!52 57 17",  
+"cowboy hat!1!.5!51 13 59 54 40 75 83 55",  
+"crowbar; tire iron!3!6!51 17 33 82 84 104 69",  
+"crutch{es}!3!10!53 66",  
+"dagger!3!1!51 75 82 84 86 87 88 104",  
+"day pack!4!10!51 15 61 19 20 71 72 74 78 79 82 84 86 88 90 22 23 28  30 102",  
+"day{s} of C rations!11!6!51 45 33 23 49 50 102",  
+"death ray!27!3!52 8 31 103 105 26 100",  
+"deck{s} of playing cards!6!1!51 16 19 80 102",  
+"denim jacket!1!.5!51 59 38 54 72 74 78 88 90 55",  
+"doctor's bag!1!10!51 36 59 61 54 18 73 55",  
+"duster; buckskin coat; poncho!3!.5!53 13 59 38 54 71 75 82 83 89 55",  
+"egg; potato{es}!1!.5!51 45 46",  
+"empty fuel can!1!10!51 14 61 17 20 71",  
+"fedora; flat cap; porkpie hat!1!.5!51 59 40 19 73 77 85 86 89 90 22 55 25  30",  
+"fire axe!3!10!53 14 15 16 18 20 21 72 74 78 79 84 90 104 23",  
+"fire extinguisher!1!15!51 14 15 16 33 18 20 21 22 23 24 25 26 28 30",  
+"first aid kit!13!10!53 66 102",  
+"flashlight!6!1!51 14 31 57 15 43 17 19 20 21 80 26  69 102",  
+"floral dress; jumper{s} with {a |}blouse{s}; jumper{s} with {a |}T-shirt{s}; skirt{s} and blouse{s}; prairie skirt{s} and blouse{s}; shirtwaist dress!1!.5!51 37 59 54 72 73 76 77 85 86 89 90",  
+"football; tennis racket!1!10!51 19 25 28  68",  
+"force field belt!15!1!52 12 31 26 100",  
+"gas mask!1!3!53 12 31 81 87 23",  
+"geiger counter!11!3!53 31 20 79 84 85 87 26 69 102",  
+"gold krugerrand!10!1!53 62 33 101",  
+"gravity rifle!36!20!52 8 31 103 33 23 26 106 100",  
+"hand grenade!5!1!53 64 82 84 87 23",  
+"hard hat{s} with lamp{s}; hard hat!3!.5!53 59 54 40 20 79 55",  
+"hockey mask!1!3!53 12 82",  
+"hoe; rake; shovel!3!10!53 13 17 86 104 69",  
+"holster!3!1!53 36 59 54 75 80 87 55 35",  
+"house deed!6!1!52 101",  
+"hunting kni{fe|ves}!3!1!51 75 76 77 83 84 86 89 90 104",  
+"ice pick!3!20!53 17 33 104 69",  
+"jar{s} of Ersatz instant coffee!6!3!52 15 45 19 99 24 49 50 30",  
+"jar{s} of Gusto pasta sauce; box{es} of Gusto spaghetti; jar{s} of Gusto olives; box{es} of Gusto bread sticks; can{s} of Gusto ravioli!3!3!51 45 19 49 27",  
+"jar{s} of jam!1!1!51 45 46 19 48 27",  
+"jug{s} of moonshine!10!10!53 13 63 80",  
+"jumpsuit; {|}work coveralls!1!3!51 13 14 37 59 54 20 21 72 74 78 79 84 55",  
+"knife; fork; spoon!1!1!51 19 27",  
+"lab coat!1!3!51 59 38 54 18 21 73 85 55 26",  
+"lariat!1!3!51 83 35",  
+"laser pistol!27!3!52 9 31 103 85 87 105 26 100",  
+"laser rifle!36!10!52 9 31 103 87 26 106 100",  
+"letter sweater!3!.5!53 59 38 54 86 55",  
+"loa{f|ves} of bread!1!3!51 45 46 86 48",  
+"lockpick set!11!1!52 16 88 69 102",  
+"lunchbox{es}!3!10!53 19",  
+"magazine!3!3!51 98 30",  
+"medical brace!3!10!53 66",  
+"metal detector!6!10!52 31 17 84 23  69 35",  
+"military helmet!9!3!53 12 84 87 102",  
+"motorcycle helmet; football helmet!9!3!53 12 17 82 84 102",  
+"motorcycle jacket!11!3!53 59 38 54 17 71 75 82 84 55 102",  
+"mouse trap!3!1!53 17 19 69",  
+"necklace!12!1!53 65 101",  
+"newspaper!3!3!51 14 15 16 17 98 18 19 20 21 22 23 24 25 27 29 30",  
+"notebook; journal; sketchbook!6!3!52 14 15 18 19 21 80 23 24 26 28  29 35",  
+"pack{s} of chemical light sticks (5 sticks)!8!1!53 57 17 71 74 78 79 81 84 90  69 102",  
+"pack{s} of chewing gum; pack{s} of Blackjack chewing gum!6!.5!52 45 80 99 49 50 29 30",  
+"pack{s} of cigarettes!13!1!53 63 80 99",  
+"pair{s} of safety goggles!6!1!52 59 54 40 20 85 55 26",  
+"peaked cap; campaign hat!1!.5!51 15 59 54 40 81 55",  
+"pencil; pen!1!1!51 24 28",  
+"pipe; chain!3!3!53 17 20 82 104",  
+"pitchfork!3!10!53 13 69",  
+"plastic cup; glass!1!3!51 31 19 27 28 ",  
+"plate!1!3!51 19 27",  
+"polaroid camera!3!3!53 31 15 44 19 21 80 22 25 26  29 30",  
+"police baton; nightstick!3!3!53 81 104",  
+"police uniform!1!3!51 37 15 59 54 81 55",  
+"pool table!24!80!52 33 19 102",  
+"portable stove!3!3!53 31 57 17 71 84 89 90 68",  
+"portable water purification filter!14!3!52 31  69 102",  
+"pressure cooker; hot plate!6!10!52 31 19",  
+"pulse pistol!27!6!52 10 31 103 33 85 87 105 26 100",  
+"pulse rifle!36!20!52 10 31 103 33 87 26 106 100",  
+"purse; handbag!1!3!51 15 61 19 22 24 25 30",  
+"rabbit's {foot|feet}; {|pairs of }Starlight Casino dice; deck{s} of Elvis Presley playing cards; poker chip{s} from the Sands Casino in Reno; Gideon's bible; pocket crucifix; St. Jude pendant; St. Christopher figurine; Star of David necklace; {|pairs of }Masonic cufflinks; Order of Odd Fellows tie clip; class ring!3!.5!53 80 35",  
+"radiation suit!13!10!53 31 59 38 54 20 79 84 87 55 26 102",  
+"red Gingham dress; blue Gingham dress; yellow Gingham dress; green Gingham dress; black and white Gingham dress!1!.5!51 37 59 54 72 73 76 77 85 86 89 90",  
+"rifle scope!8!1!53 13 31 19 83 86 102",  
+"ring!7!.5!53 65 101",  
+"road map!1!1!51 14 17 71 75 84 89 90 22 30",  
+"roll{s} of 35mm film (24 shots)!6!.5!52 41 42",  
+"roll{s} of polaroid film (10 shots)!3!1!53 41 44",  
+"safe-cracking kit!20!20!52 31 15 16 84 88 69 102",  
+"scalpel!1!1!51 66 69",  
+"set{s} of horse tack!1!20!51 13",  
+"set{|s} of keys!1!.5!51 14 15 19 20 21 22 23 24 26 28 35",  
+"shawl!3!.5!53 13 59 38 54 19 73 76 77 86 89 90",  
+"shiv; switchblade!3!1!51 16 82 84 88 104",  
+"shotgun shell!1!.5!53 0 11",  
+"slab{s} of bacon!3!1!51 45 19 47 49",  
+"sleeping bag; tent!1!10!51 57 17 71 84 90",  
+"sombrero!6!.5!52 13 59 40 75 83 90 55",  
+"stick{s} of beef jerky!3!1!51 45 19 47 49 50",  
+"stick{s} of dynamite!3!1!53 64 20 79",  
+"straw sun hat!3!.5!53 15 59 54 40 19 73 76 77 85 86 89 90 22 25",  
+"stun baton!11!3!52 81 87 104 102",  
+"suit{|s} of riot gear!15!20!53 12 31 15 16 81 84 23 102",  
+"sword; machete!3!3!52 71 86 87 104",  
+"tabletop radio!1!10!51 14 31 15 60 17 19 21 23 ",  
+"teargas grenade!3!1!53 15 64 81",  
+"thermos!11!3!53 57 17 19 83 84 102",  
+"toaster!1!10!51 31 19",  
+"toy robot!6!3!52 31 43 19 70",  
+"trenchcoat; sports jacket!3!.5!53 59 38 77 55",  
+"walkie-talkie!6!3!52 31 15 60 20 21 77 81 84 87 23 26",  
+"wanted poster!3!.5!53 71 75 81",  
+"will; contract; war bond; passport!1!1!51 101",  
+"wrench{es}; hammer!1!3!51 14 17 20 72 78 84  69",  
+"{|pairs of }Mary Jane shoes!1!.5!51 15 59 39 54 19 21 72 73 77 85 86 88 89 90 23",  
+"{|pairs of }black leather shoes!1!.5!51 15 59 39 54 19 21 71 72 73 74 77 78 81 85 86 87 88 89 90 55 23",  
+"{|pairs of }blue suede loafers; {|pairs of }saddle shoes!3!.5!53 59 39 54 86 55",  
+"{|pairs of }chaps!1!.5!51 36 13 59 54 83 55",  
+"{|pairs of }combat boots!1!.5!51 12 59 39 54 71 75 81 82 84 87 90 55 23",  
+"{|pairs of }cowboy boots!1!.5!51 59 39 54 19 71 75 76 77 78 79 82 83 84 86 88 89 90 22 55 ",  
+"{|pairs of }dice!3!.5!51 16 19 80 35 102",  
+"{|pairs of }dog tags!1!.5!51 87 23 35",  
+"{|pairs of }forceps!3!3!53 66 69",  
+"{|pairs of }military fatigues!1!3!51 37 59 54 84 87 55 23",  
+"{|pairs of }night vision goggles!14!3!52 36 31 59 43 54 81 84 87 55 23 102",  
+"{|pairs of }slacks {and a|with} button up shirt{s}!1!.5!51 37 59 19 72 73 85 86 89 90 55",  
+"{|pairs of }work boots!1!.5!51 12 59 39 54 71 75 76 79 81 82 84 86 88 90 55 23",  
+"{|sets of }football pads!11!10!53 12 17 82 84 102",  
+"{|suits of }makeshift metal armor!15!20!52 12 31 16 82 84 102",  
+"{|}binoculars!11!3!53 31 19 71 84 87 102",  
+"{|}bongos; flute!3!3!53 90 35",  
+"{|}brass knuckles!3!1!52 16 82 104",  
+"{|}jeans and a T-shirt; {|}jeans and a button up work shirt; {|}jeans and a flannel shirt; {|}jeans and a western shirt!1!.5!51 37 59 54 19 71 72 74 75 76 78 82 83 84 86 88 89 90 55" 
 );
 
-ion.profDb = new ion.models.ProfessionDatabase(['post','pre','glasses','injuries','military:tattoo','sailor:tattoo','tattoo','Agile','Attractive','Cunning','Persuasive','Smart','Strong','Tough','Willpower','high','low','normal','Art','Athletics','Bargain','Business','Camouflage','Electrical Repair','Foraging','Forensics','Government','Homesteading','Horseback Riding','Humanities','Law','Maritime','Mathematics','Mechanical Repair','Medicine','Mining','Negotiate','Observation','Research','Scavenging','Spelunking','Tracking','Wayfinding','Archery','Explosives','Firearms','Melee Weapons','Military','Unarmed Combat','Blacksmith','Brewer','Cook','Glassblower','Leatherworker','Potter','Weaver','Woodworker','Chemical Engineering','Civil Engineering','Eletrical Engineering','Mechanical Engineering','Mining Engineering','Nuclear Engineering','Chinese','French','German','Italian','Russian','Spanish','Biology','Chemistry','Geology','Physics','Science','Social Science','Deceive','Forgery','Intimidate','Lockpicking','Pickpocket','Safe Cracking','Stealth','Streetwise','Communications','Computers','Cryptography','Programming','Robotics','Rocketry','Butcher','Carpenter','Clothier','Gunsmith','Machinist','Mason','Plumber','Wagonwright','Driving','Motorcycling','Pilot Aircraft','Trucking','common','rare','uncommon','kit:courier','kit:craftsperson','kit:doctor','kit:electrician','kit:gunslinger','kit:homesteader','kit:leader','kit:mechanic','kit:miner','kit:police','kit:raider','kit:rancher','kit:scavenger','kit:scientist','kit:settler','kit:soldier','kit:thief','kit:trader','kit:vagrant','innate']);
+ion.profDb = new ion.db.ProfessionDatabase(['post','pre','glasses','injuries','military:tattoo','sailor:tattoo','tattoo','high','low','normal','common','rare','uncommon','kit:courier','kit:craftsperson','kit:doctor','kit:electrician','kit:gunslinger','kit:homesteader','kit:leader','kit:mechanic','kit:miner','kit:police','kit:raider','kit:rancher','kit:scavenger','kit:scientist','kit:settler','kit:soldier','kit:thief','kit:trader','kit:vagrant','innate','Agile','Attractive','Cunning','Persuasive','Smart','Strong','Tough','Willpower','Art','Athletics','Bargain','Business','Camouflage','Electrical Repair','Foraging','Forensics','Government','Homesteading','Horseback Riding','Humanities','Law','Maritime','Mathematics','Mechanical Repair','Medicine','Mining','Negotiate','Observation','Research','Scavenging','Spelunking','Tracking','Wayfinding','Archery','Explosives','Firearms','Melee Weapons','Military','Unarmed Combat','Blacksmith','Brewer','Cook','Glassblower','Leatherworker','Potter','Weaver','Woodworker','Chemical Engineering','Civil Engineering','Eletrical Engineering','Mechanical Engineering','Mining Engineering','Nuclear Engineering','Chinese','French','German','Italian','Russian','Spanish','Biology','Chemistry','Geology','Physics','Science','Social Science','Deceive','Forgery','Intimidate','Lockpicking','Pickpocket','Safe Cracking','Stealth','Streetwise','Communications','Computers','Cryptography','Programming','Robotics','Rocketry','Butcher','Carpenter','Clothier','Gunsmith','Machinist','Mason','Plumber','Wagonwright','Driving','Motorcycling','Pilot Aircraft','Trucking']);
 ion.profDb.register(ion.models.AtomicProfession,
-"Air Force!45 47 99!36 46 48!101 119 4 17 0 1", "this.assignRank(c);",  
-"Army!45 47!36 46 48 22!101 119 4 17 0 1", "this.assignRank(c);",  
-"Bounty Hunter!45 77!20 22 28 41 42 46 48 81 82 98!103 3 108 16 0", "",  
-"Business Executive; Manager!20 21!26 30 32 36 63 64 65 66 67 68!103 17 1", "",  
-"Carnie!20 75!37 39 82 97!103 16 1 6", "",  
-"Clerk; Sales Clerk; Secretary; Salesman; Hotel Clerk; Motel Clerk; Warehouse Clerk!21!20!101 16 1", "",  
-"Coast Guard!31 45 47!36 46 48!102 119 4 17 0 1 5", "this.assignRank(c);",  
-"Courier!28 42!43 45 97 98 99 100!103 104 17 0", "",  
-"Craftsperson!20!18 21 49 50 51 52 53 54 55 56!101 105 17 0", "",  
-"Doctor!34!38 69 70 73 25!102 15 106 0 1", "c.honorific = 'Doctor';",  
-"Elementary school teacher; Middle school teacher; high school teacher!38!18 19 29 32 69 70 71 72 73 74!101 2 17 1", "",  
-"Engineer!32 38!84 87 88 57 58 59 60 61 62!103 17 1", "",  
-"Homesteader; Farmer!27!19 20 23 33 37 49 50 51 52 53 54 55 56 97 100!101 109 17 0", "",  
-"Innate!!7 8 9 10 11 12 13 14!101 123", "",  
-"Librarian; Archivist!38!63 64 65 66 67 68 84!103 2 17 1", "",  
-"Marine!45 47!36 46 48 42 22!101 119 4 17 0 1 5", "this.assignRank(c);",  
-"Mayor; Council Member!20 26!21 37!102 15 110 0", "",  
-"Mechanic!23 33!20 83 84 85 86 87 88!101 111 17 0 1", "",  
-"Miner!35!23 33 40 44!101 112 16 0 1", "",  
-"Navy!31 45 47 99!36 46 48!103 119 17 0 1 5", "this.assignRank(c);",  
-"Newspaper Reporter!37 38!26 75 82 83!103 2 17 1", "",  
-"Police!45!19 26 36 37 48 77 82!103 113 17 0 1", "this.assignRank(c);",  
-"Professor!38!18 29 30 32 34 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 83 84 85 86 87 88!102 2 15 117 1", "c.degree = 'Ph.D.'",  
-"Raider!45 46!22 28 41 43 44 48 75 77 81 98!103 3 114 16 0 6", "",  
-"Rancher; Cowhand!28 45!19 20 24 27 37 41 42!101 115 17 0 1", "",  
-"Scavenger!39 42!24 37 78 80 43 46 45!101 3 116 17 0", "",  
-"Scientist!38!32 69 70 71 72 73 74 83 84 85 86 87 88!102 2 15 117 0 1", "",  
-"Settler!27!19 20 23 33 37 49 50 51 52 53 54 55 56 97 100 82!101 118 17 0", "",  
-"Thief!75 77 82!9 78 76 79 80 81 46 85 20!101 120 16 0 1", "",  
-"Trader!10 20 21!9 23 30 33 36 39 68 75 76 82 83!103 2 121 17 0", "",  
-"Tradesperson!20!21 89 90 91 92 93 94 95 96!101 105 17 0", "" 
+"Air Force!68 70 122!59 69 71!10 28 4 9 0 1", "this.assignRank(c);",  
+"Army!68 70!59 69 71 45!10 28 4 9 0 1", "this.assignRank(c);",  
+"Bounty Hunter!68 100!43 45 51 64 65 69 71 104 105 121!12 3 17 8 0", "",  
+"Business Executive; Manager!43 44!49 53 55 59 86 87 88 89 90 91!12 9 1", "",  
+"Carnie!43 98!60 62 105 120!12 8 1 6", "",  
+"Clerk; Sales Clerk; Secretary; Salesman; Hotel Clerk; Motel Clerk; Warehouse Clerk!44!43!10 8 1", "",  
+"Coast Guard!54 68 70!59 69 71!11 28 4 9 0 1 5", "this.assignRank(c);",  
+"Courier!51 65!66 68 120 121 122 123!12 13 9 0", "",  
+"Craftsperson!43!41 44 72 73 74 75 76 77 78 79!10 14 9 0", "",  
+"Doctor!57!61 92 93 96 48!11 7 15 0 1", "c.honorific = 'Doctor';",  
+"Elementary school teacher; Middle school teacher; high school teacher!61!41 42 52 55 92 93 94 95 96 97!10 2 9 1", "",  
+"Engineer!55 61!107 110 111 80 81 82 83 84 85!12 9 1", "",  
+"Homesteader; Farmer!50!42 43 46 56 60 72 73 74 75 76 77 78 79 120 123!10 18 9 0", "",  
+"Innate!!33 34 35 36 37 38 39 40!10 32", "",  
+"Librarian; Archivist!61!86 87 88 89 90 91 107!12 2 9 1", "",  
+"Marine!68 70!59 69 71 65 45!10 28 4 9 0 1 5", "this.assignRank(c);",  
+"Mayor; Council Member!43 49!44 60!11 7 19 0", "",  
+"Mechanic!46 56!43 106 107 108 109 110 111!10 20 9 0 1", "",  
+"Miner!58!46 56 63 67!10 21 8 0 1", "",  
+"Navy!54 68 70 122!59 69 71!12 28 9 0 1 5", "this.assignRank(c);",  
+"Newspaper Reporter!60 61!49 98 105 106!12 2 9 1", "",  
+"Police!68!42 49 59 60 71 100 105!12 22 9 0 1", "this.assignRank(c);",  
+"Professor!61!41 52 53 55 57 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 106 107 108 109 110 111!11 2 7 26 1", "c.degree = 'Ph.D.'",  
+"Raider!68 69!45 51 64 66 67 71 98 100 104 121!12 3 23 8 0 6", "",  
+"Rancher; Cowhand!51 68!42 43 47 50 60 64 65!10 24 9 0 1", "",  
+"Scavenger!62 65!47 60 101 103 66 69 68!10 3 25 9 0", "",  
+"Scientist!61!55 92 93 94 95 96 97 106 107 108 109 110 111!11 2 7 26 0 1", "",  
+"Settler!50!42 43 46 56 60 72 73 74 75 76 77 78 79 120 123 105!10 27 9 0", "",  
+"Thief!98 100 105!35 101 99 102 103 104 69 108 43!10 29 8 0 1", "",  
+"Trader!43 44!35 46 53 56 59 62 91 98 105 106 36!12 2 30 9 0", "",  
+"Tradesperson!43!44 112 113 114 115 116 117 118 119!10 14 9 0", "" 
 );
 
-ion.encDb = new ion.models.EncounterDatabase(['common','uncommon','rare','extractive']);
-ion.encDb.register(
+ion.storeDb = new ion.db.StoreDatabase(['cluster:low', 'cluster:medium', 'cluster:none', 'common', 'rare', 'uncommon', 'encampment', 'roadside', 'settlement']);
+ion.storeDb.register(
+"Bar; Tavern; Saloon!By the glass, or some bottles for purchase:!trader!!alcohol -bottleofwine!50!3 2 3 8", 
+"Biker Shop!Don't mess with the proprietors.!Biker Gang!!kit:raider | weapon | ammo | drug!100!4 0 4 7", 
+"Diner; Cafe; Restaurant; Drive-Thru!A hot meal for 4T, some food for sale:!trader!!prepared food!!4 0 4 7", 
+"Diner; Cafe; Restaurant; Eatery!A hot meal for 3T{.|, prefers casino chips.|, prefers currency.|, only accepts currency.}!trader!!prepared food!!3 0 3 8", 
+"Mart; Market; Shop; Store!!trader!!food!!3 0 3 6 8", 
+"Pottery Shop!!tradesperson!Potter!-br pottery!100!5 0 8 5", 
+"Sporting Goods Store!!trader!!sport | camping!!4 1 4 7 8"
 );
 (function(atomic, ion, db, Bag, IonSet) {
+
+    var containers = {
+        "Safe": {
+            desc: ["Safecracking+1", "Safecracking", "Safecracking-1", "Safecracking-2", "Safecracking-3", "Safecracking-4"],
+            query: { 
+                totalValue: "3d8+15", 
+                tags: "cash | firearm -scifi | secured | luxury -food", 
+                maxEnc: 10, 
+                fillBag: false
+            }
+        },
+        "Lockbox": {
+            desc: ["Unlocked", "Lockpicking", "Lockpicking-1", "Lockpicking-2"],
+            query: {
+                totalValue: "2d6+2",
+                tags: "cash | secured | firearm -scifi -br | asetofkeys | luxury -food", 
+                maxEnc: 3, 
+                fillBag: true
+            }
+        },
+        "Trunk": {
+            desc: ["Unlocked", "Lockpicking+2, can be broken open", "Lockpicking+3, can be broken open", "Lockpicking+4, can be broken open"],
+            query: {
+                totalValue: "2d6",
+                tags: "clothing | armor | firearm -scifi -br | unique", 
+                maxEnc: 10, 
+                fillBag: false
+            }
+        },
+        "Cash Register": {
+            desc: ["easily opened"],
+            query: {
+                totalValue: "6d50/100",
+                tags: "cash",
+                fillBag: true
+            }
+        },
+        "Cash On Hand": {
+            desc: ["under the counter", "in a lockbox"],
+            query: {
+                totalValue: "5d5",
+                tags: "currency", 
+                fillBag: true,
+                maxValue:5
+            }
+        },
+        "Clothes Closet": {
+            desc: ["no lock"],
+            query: {
+                totalValue: "1d8+5",
+                tags: "clothing -research -industrial -military", 
+                fillBag: false
+            }
+        }
+    };
+    // A container of containers.
+    // "vault" 
+    
+    var containerTypes = Object.keys(containers).sort();
     
     // Uses the existing API to get the right frequency of objects, but can lead to many duplicates.
     // of all the fill* methods, this is the only one that respects all the createBag() options, 
@@ -8348,7 +8671,7 @@ ion.encDb.register(
             // then take the min value. For that reason, the item's value has to be tested below
             // to verify it is less than the remaining bag value (if it's not, just quit and return
             // the bag).
-            opts.conditions.maxValue = Math.max(Math.min(opts.conditions.maxValue, bagValue), opts.conditions.minValue);
+            opts.maxValue = Math.max(Math.min(opts.maxValue, bagValue), opts.minValue);
 
             // Because maxValue changes every query, we can't cache any of this.
             var item = db.find(opts);
@@ -8360,33 +8683,62 @@ ion.encDb.register(
         }
         return bag;
     }
+    function cluster(value) {
+        switch(value) {
+        case "low":
+            return ion.roll("1d3*2");
+        case "medium":
+            return ion.roll("2d3*4");
+        case "high":
+            return ion.roll("3d3*5");
+        }
+    }
+    // Try and create duplicates on purpose
+    function stockpile(bag, opts) {
+        var bagValue = opts.totalValue;
+        while (bagValue > 0) {
+            var count = cluster(opts.cluster);
+            // Take the the max value or the bag value, unless they are less than the min value, 
+            // then take the min value. For that reason, the item's value has to be tested below
+            // to verify it is less than the remaining bag value (if it's not, just quit and return
+            // the bag).
+            opts.maxValue = Math.max(Math.min(opts.maxValue, bagValue), opts.minValue);
+            
+            // Because maxValue changes every query, we can't cache any of this.
+            var item = db.find(opts);
+            if (item === null || (item.value*count) > bagValue) {
+                return bag;
+            }
+            bag.add(item, count);
+            bagValue -= (item.value * count);
+        }
+        return bag;
+    }
     function fillCurrency(bag, amount) {
         if (amount > 0) {
-            var currencies = db.findAll('currency', {maxValue: amount});
+            var currencies = db.findAll({tags: 'currency', maxValue: amount});
             while(amount > 0) {
                 var currency = currencies.get();
-                if (currency !== null) {
-                    bag.add(currency);
-                    amount -= currency.value;
-                } else {
+                if (currency === null) {
                     return;
                 }
+                bag.add(currency);
+                amount -= currency.value;
             }
         }
     }
-
     function kitWeapon(bag, kitTag) {
         var weaponType = (ion.test(60)) ? "firearm" : "melee";
-        var weapon = db.find(weaponType, kitTag, "-br");
+        var weapon = db.find([weaponType, kitTag, "-br"]);
         if (weapon) {
             bag.add(weapon);    
             if (weapon.is('firearm')) {
-                var ammo = db.find("ammo", weapon.typeOf('ammo'), "-bundled");
+                var ammo = db.find(["ammo", weapon.typeOf('ammo'), "-bundled"]);
                 if (ammo) {
                     bag.add(ammo, ion.roll("4d4"));
                 }
                 if (ion.test(20)) {
-                    weapon = db.find("melee", kitTag, "-scifi");
+                    weapon = db.find(["melee", kitTag, "-scifi"]);
                     if (weapon) {
                         bag.add(weapon);
                     }
@@ -8426,6 +8778,24 @@ ion.encDb.register(
             }
         };
     }
+    function createParams(params) {
+        params = ion.extend({}, params || {}); 
+        params.totalValue = params.totalValue || 20;
+        params.fillBag = ion.isBoolean(params.fillBag) ? params.fillBag : true;
+        params.minValue = ion.isNumber(params.minValue) ? params.minValue : 0;
+        params.maxValue = ion.isNumber(params.maxValue) ? params.maxValue : Number.MAX_VALUE;
+        params.minEnc = ion.isNumber(params.minEnc) ? params.minEnc : 0;
+        params.maxEnc = ion.isNumber(params.maxEnc) ? params.maxEnc : Number.MAX_VALUE;
+        
+        if (params.maxValue <= 0 || params.maxEnc <= 0 || 
+            params.minValue > params.maxValue || params.minEnc > params.maxEnc) {
+            throw new Error('Conditions cannot match any taggable: ' + JSON.stringify(params));
+        }
+        if (!ion.isUndefined(params.totalValue) && params.totalValue <= 0) {
+            throw new Error("Bag value must be more than 0");
+        }
+        return params;
+    }
     
     /**
      * Generate the possessions that would be on the person of an active NPC (e.g. out on patrol, 
@@ -8435,28 +8805,21 @@ ion.encDb.register(
      * @method createKit
      * @for atomic
      * 
-     * @param profession {String} The name of the current profession of the NPC. 
+     * @param params {Object}
+     *     @param params.profession {String|ion.models.Profession} profession name or instance
+     *     @param [params.gender] {String} gender of character (male or female)
+     *     
      * @return {ion.models.Bag} A bag of items on the person of that NPC
      */
-    /**
-     * Generate the possessions that would be on the person of an active NPC (e.g. out on patrol, 
-     * out for a night on the town, out on a raid or in the middle of criminal activity).  
-     * 
-     * @static
-     * @method createKit
-     * @for atomic
-     * 
-     * @param profession {ion.models.Profession} The current profession of the NPC 
-     * @return {ion.models.Bag} A bag of items on the person of that NPC
-     */
-    atomic.createKit = function(profession, gender) {
+    atomic.createKit = function(params) {
         var bag = new Bag(),
-            kitTag = (ion.isString(profession)) ? "kit:"+profession : profession.typeOf('kit'); 
+            kitTag = (ion.isString(params.profession)) ? 
+                "kit:"+params.profession : params.profession.typeOf('kit'); 
 
         kitWeapon(bag, kitTag);
 
         // Clothes: head, body, feet, and some accessories. By gender and profession.
-        var kitFill = kitChanceOfFill(bag, gender, kitTag);
+        var kitFill = kitChanceOfFill(bag, params.gender, kitTag);
         kitFill(100, 1, 'body {0} {1}');
         kitFill(30, 1, 'head {0} {1}');
         kitFill(50, 1, 'coat {0} {1}');
@@ -8471,14 +8834,16 @@ ion.encDb.register(
             fillCurrency(bag, ion.roll(20-bag.value()));
         }
         return bag;
-
     };
     
     /**
      * Generate a collection of items.
      * 
-     *     // Order of parameters is not important
-     *     var bag = atomic.createBag(500, {minValue: 10}, "firearm");
+     *     var bag = atomic.createBag({
+     *         totalValue: 500, 
+     *         minValue: 10, 
+     *         tags: "firearm"
+     *     });
      *     bag.toString()
      *     => "2 Browning Automatic Rifles, a M14 Rifle...and a pulse rifle."
      *  
@@ -8486,81 +8851,92 @@ ion.encDb.register(
      * @method createBag
      * @for atomic
      * 
-     * @param tags {String} One or more query tags specifying the items in the bag 
-     * @param [conditions] {Object} The conditions that should be placed on items. 
-     * These are the same conditions that are specified in the call to {{#crossLink "_/find"}}{{/crossLink}}. 
-     * @param [totalValue=20] {Number} The total value of the bag.
-     * @param [fillBag=true] {Boolean} Should the bag's value be filled with 
+     * @param [params] {Object}
+     *      @param [params.tags] {String} One or more query tags specifying the items in the bag
+     *      @param [params.minValue] {Number}
+     *      @param [params.maxValue] {Number}
+     *      @param [params.minEnc] {Number}
+     *      @param [params.maxEnc] {Number}
+     *      @param [params.totalValue=20] {Number} The total value of the bag
+     *      @param [params.fillBag=true] {Boolean} Should the bag's value be filled with 
      *      currency if it hasn't been filled any other way? Usually currency has a value of 
      *      1 or less, and can cover a gap otherwise caused by search criteria, but this 
      *      isn't always desirable.  
      */
-    atomic.createBag = function() {
-        var q = db.parseQuery.apply(db, arguments),
-            bag = fill(new Bag(), q);
-        
-        if (q.fillBag !== false) {
-            fillCurrency(bag, q.totalValue - bag.value());
+    atomic.createBag = function(params) {
+        params = createParams(params); 
+        var bag = fill(new Bag(), params);
+        if (params.fillBag !== false) {
+            fillCurrency(bag, params.totalValue - bag.value());
         }
         return bag;
     };
     
-    var containers = {
-        "Safe": {
-            desc: ["Safecracking+1", "Safecracking", "Safecracking-1", "Safecracking-2", "Safecracking-3", "Safecracking-4"],
-            totalValue: "3d8+15", 
-            query: ["cash | firearm -scifi | secured | luxury -food", {maxEnc: 10}, false]
-        },
-        "Lockbox": {
-            desc: ["Unlocked", "Lockpicking", "Lockpicking-1", "Lockpicking-2"],
-            totalValue: "2d6+2", // "2d5-1",
-            query: ["cash | secured | firearm -scifi -br | asetofkeys | luxury -food", {maxEnc: 3}, true]
-        },
-        "Trunk": {
-            desc: ["Unlocked", "Lockpicking+2, can be broken open", "Lockpicking+3, can be broken open", "Lockpicking+4, can be broken open"],
-            totalValue: "2d6",
-            query: ["clothing | armor | firearm -scifi -br | unique", {maxEnc: 10}, false]
-        },
-        "Cash Register": {
-            desc: ["easily opened"],
-            totalValue: "6d50/100",
-            query: ["cash", true]
-        },
-        "Currency on hand": {
-            desc: ["under the counter", "in a lockbox"],
-            totalValue: "2d3",
-            query: ["currency", false]
-        },
-        "Clothes Closet": {
-            desc: ["no lock"],
-            totalValue: "1d8+5",
-            // In theory all the kit:* tags could be excluded, as they are kinda weird in closets.
-            query: ["clothing -research -industrial -military", false] // -kit:soldier -kit:police -kit:rancher
+    /**
+     * Like creating a bag but with many more repeated items (purposefully repeated, not 
+     * accidentally repeated), as if collected for a cache, shop, or storeroom. Honors the 
+     * `totalValue` limit (in fact will usually fall short of it), but `fillBag` will always be 
+     * treated as false.
+     * 
+     * @static
+     * @method createStockpile
+     * @for atomic
+     * 
+     * @param [params] {Object}
+     *      @param [params.tags] {String} One or more query tags specifying the items in the bag
+     *      @param [params.cluster="medium"] {String} "low", "medium" or "high". Alters the amount 
+     *          of stockpiling from a little to a lot.
+     *      @param [params.minValue] {Number}
+     *      @param [params.maxValue] {Number}
+     *      @param [params.minEnc] {Number}
+     *      @param [params.maxEnc] {Number}
+     *      @param [params.totalValue=20] {Number} The total value of the stockpile. In practice, 
+     *          the stockpile will be worth less than this. Must be at least 20.
+     */
+    atomic.createStockpile = function(params) {
+        params = createParams(params); 
+        params.cluster = params.cluster || "medium";
+        params.fillBag = false;
+        // Have to have at least 20 for totalValue
+        if (params.totalValue < 20) {
+            params.totalValue = 20;
         }
+        var bag, i=0;
+        do {
+            bag = stockpile(new Bag(), params);
+        } while(bag.count() === 0 && i++ < 50);
+        return bag;
     };
-    // A container of containers.
-    // "vault" 
     
-    var containerTypes = Object.keys(containers).sort();
-    
+    /**
+     * Create a bag with additional properties (representing a container of some kind, like a 
+     * lockbox or safe).
+     * 
+     * @static
+     * @method createContainer
+     * @for atomic
+     * 
+     * @param type {String} the container type
+     * @return {ion.models.Bag} a bag representing a container 
+     * 
+     */
     atomic.createContainer = function(type) {
         if (!containers[type]) {
-            throw new Error("Invalid container, use: " + containerTypes.join(", "));
+            type = ion.random(containerTypes);
         }
         var container = containers[type];
-        // Only works if it's reset each time...
-        if (!container.totalValue) {
-            throw new Error("Container "+type+" has no totalValue property.");
-        }
-        var q = container.query.concat( ion.roll(container.totalValue) );
-        var bag = atomic.createBag.apply(atomic, q);
+        var params = ion.extend({}, container.query);
+        params.totalValue = ion.roll(params.totalValue);
+        
+        var bag = atomic.createBag(params);
         if (container.desc) {
             bag.descriptor = ion.format("{0} ({1})", ion.titleCase(type), ion.select(container.desc));    
         }
         return bag;
     };
     /**
-     * Get container types.
+     * Get container types. One of these values is a valid type to pass to the 
+     * `atomic.createContainer(type)` method.
      * 
      * @static
      * @method getContainerTypes
@@ -8902,8 +9278,8 @@ ion.encDb.register(
     }
     
     /** 
-     * Generate a description of a person's appearance and behavior. This description 
-     * will be different each time the character is passed to this function.
+     * Describe a character's appearance and behavior. This description will be different 
+     * each time the character is passed to this function.
      * 
      *     atomic.createAppearance(character)
      *     => "Long brown hair, short stature"
@@ -8913,9 +9289,10 @@ ion.encDb.register(
      * @for atomic
      * 
      * @param character {ion.models.Character} The character to describe.
-     * @return {String} A description of the appearance and behavior of a NPC.
+     * @return {String} A description of the appearance and behavior of the character
      */
     atomic.createAppearance = function(character) {
+        if (!character) { throw new Error("Character required"); }
         var app = [], 
             statements = []; 
         hairStyle.call(this, character, app);
@@ -8935,11 +9312,7 @@ ion.encDb.register(
 
 (function(atomic, ion, db, Name, Table, Character, IonSet) {
 
-    var combatantTraits = ["Agile", "Archery", "Athletics", "Cunning", "Driving", "Explosives", 
-                           "Firearms", "Horseback Riding", "Intimidate", "Medicine", 
-                           "Melee Weapons", "Military", "Motorcycling", "Stealth", "Strong", 
-                           "Tough", "Tracking", "Trucking", "Unarmed Combat"],
-        innate = db.find('innate'),
+    var innate = db.find('innate'),
         histories = ["Before the collapse, was {0}", "Was {0} up until the war", "Was {0} before the war"];
     
     function nameFromOpts(n, gender, race) {
@@ -8947,7 +9320,8 @@ ion.encDb.register(
             var parts = n.split(" ");
             return new Name({given: parts[0], family: parts[1]});
         } else if (n instanceof ion.models.Name) {
-            return n;
+            var newName = atomic.createCharacterName({ gender: gender, race: race});
+            return ion.extend(newName, n);
         } else {
             return atomic.createCharacterName({ gender: gender, race: race});
         }
@@ -8955,18 +9329,13 @@ ion.encDb.register(
 
     function createOpts(params) {
         var opts = ion.extend({}, params);
-        if (/^([Ff]e)?[Mm]ale$/.test(opts.gender)) {
-            opts.gender = opts.gender.toLowerCase();
-        } else {
-            opts.gender = ion.random(['male','female']);
-        }
+        opts.gender = opts.gender || ion.random(['male','female']);
         opts.equip = (ion.isBoolean(opts.equip)) ? opts.equip : true;
-        opts.race = opts.race ||  atomic.getRace();
+        opts.race = opts.race ||  atomic.createRace();
         opts.name = nameFromOpts(opts.name, opts.gender, opts.race);
-        opts.age = (ion.isNumber(opts.age)) ? ion.bounded(opts.age, 17, 100) : ion.roll("14+3d12");
+        opts.age = (ion.isNumber(opts.age)) ? ion.bounded(opts.age, 1, 100) : ion.roll("14+3d12");
         if (opts.traits) {
             opts.traits = ion.extend({}, opts.traits);
-            console.log(opts.traits);
         }
         if (opts.profession) {
             opts.profession = ion.toTag(opts.profession);
@@ -8977,38 +9346,20 @@ ion.encDb.register(
         return opts;
     }
     
-    /**
-     * Create a character.
-     * 
-     *     atomic.createCharacter({profession: 'thief', inventory: false})
-     *     => character
-     *
-     * @static
-     * @method createCharacter
-     * @for atomic
-     * 
-     * @param [params] {Object}
-     *     @param [params.gender] {String} "male" or "female"
-     *     @param [params.name] {String} full name (e.g. "Loren Greene")
-     *     @param [params.age] {Number}
-     *     @param [param.race] {String} "anglo" or "hispanic" (20% hispanic by default)
-     *     @param [params.profession] {String} Name of a profession this character should have in their experience.
-     *     @param [params.equip=true] {boolean} true to create inventory, false otherwise
-     *     @param [params.traits] {Object} a map of trait names to trait values. These are deducted from the traits
-     *          added to the character during generation.
-     * @return {ion.models.Character} character
-     */
-    atomic.createCharacter = function(params) {
-        var prof = null, opts = createOpts(params);
-        
-        if (opts.profession) {
-            prof = db.find(opts.profession);
-            if (prof === null || prof.not('post')) {
-                throw new Error("Invalid profession: " +opts.profession+ " (must be post-war profession)");
-            }
+    
+    function traitsForChild(character, opts) {
+        delete character.profession;
+        delete character.honorific; // this should only exist as a result of training, however.
+        // make a child instead.
+        if (character.age > 4) {
+            innate.train(character, ion.roll("1d3-1"));
+            // Calling children "attractive" gets creepy. Avoid.
+            delete character.traits.Attractive;    
         }
+    }
+    
+    function traitsForAdult(character, prof, opts) {
         var startingTraitPoints = ion.sum(ion.values(opts.traits)),
-            character = new Character(opts),
             traitPoints = 8 + (~~(opts.age/10)) - startingTraitPoints;
         
         innate.train(character, ion.roll("2d2-1"));
@@ -9040,32 +9391,89 @@ ion.encDb.register(
             post.train(character, traitPoints);
         }
         character.profession = ion.select(post.names);
-        
-        // Hispanic people are likely to speak some Spanish. 
-        var es = ion.nonNegativeGaussian(1.5);
-        if (es > 0) {
-            character.changeTrait("Spanish", es);
-        }
-        
         if (opts.equip) {
-            character.inventory = atomic.createKit( post, character.gender );    
+            character.inventory = atomic.createKit({profession: post, gender: character.gender});    
         }
-
-        character.appearance = atomic.createAppearance( character );
+    }
+    
+    /**
+     * Get all (post-collapse) professions. These are valid values for the `atomic.createCharacter()` 
+     * call's {profession: [name]}. 
+     */
+    atomic.getProfessions = function() {
+        return ion.profDb.findAll('post').rows.map(function(row) {
+            return row.names[0];
+        }, []).sort();
+    };
+    
+    /**
+     * Create a character.
+     * 
+     *     atomic.createCharacter({profession: 'thief', inventory: false})
+     *     => character
+     *
+     * @static
+     * @method createCharacter
+     * @for atomic
+     * 
+     * @param [params] {Object}
+     *     @param [params.gender] {String} "male" or "female"
+     *     @param [params.name] {String} full name (e.g. "Loren Greene")
+     *     @param [params.age] {Number}
+     *     @param [params.race] {String} "anglo" or "hispanic" (20% hispanic by default)
+     *     @param [params.profession] {String} Name of a profession this character should have in their experience.
+     *          Value can be "soldier" for any of the armed services
+     *     @param [params.equip=true] {Boolean} Should an inventory be created for this character?
+     *     @param [params.traits] {Object} a map of trait names to trait values. These are deducted from the traits
+     *          added to the character during generation.
+     * @return {ion.models.Character} character
+     */
+    atomic.createCharacter = function(params) {
+        var prof = null, opts = createOpts(params);
         
-        // These are normally hidden for NPCs, but are available for combatant string.
-        character.initiative = ion.roll("2d6") + character.trait('Agile');
-        character.hp = 10 + character.trait('Tough');
+        if (opts.profession) {
+            prof = db.find(opts.profession);
+            if (prof === null || prof.not('post')) {
+                throw new Error("Invalid profession: " +opts.profession+ " (must be post-war profession)");
+            }
+        }
+        var character = new Character(opts);
+        if (character.age < 17) {
+            traitsForChild(character, opts);
+        } else {
+            traitsForAdult(character, prof, opts);
+            
+            // Not tailored towards children... may eventually be fixed
+            character.appearance = atomic.createAppearance( character );
+            
+            // These are normally hidden for NPCs, but are available for combatant string.
+            character.initiative = ion.roll("2d6") + character.trait('Agile');
+            character.hp = 10 + character.trait('Tough');
+        }
+        
+        // Hispanic people are likely to speak some Spanish.
+        if (character.race === "hispanic") {
+            character.changeTrait("Spanish", ion.nonNegativeGaussian(1.5));
+        }
         
         return character;
     };
     
-    atomic.getRace = function() {
+    /**
+     * Select one of the available races (Anglo 80% of the time, Hispanic 20% of the time).
+     * 
+     *     atomic.createRace()
+     *     => "hispanic"
+     * 
+     * @static
+     * @method createRace
+     * @for atomic
+     * 
+     * @return {String} a race
+     */
+    atomic.createRace = function() {
         return (ion.test(20) ? "hispanic" : "anglo");
     };
-
-    // TODO: WTF
-    atomic.combatantTraits = combatantTraits;
     
 })(atomic, ion, ion.profDb, ion.models.Name, ion.tables.Table, ion.models.Character, ion.models.IonSet);
 
@@ -9092,8 +9500,8 @@ ion.encDb.register(
     Names for military patrols
  */
 (function(atomic, ion, db, Gang) {
-    var kinds = {
-        'biker gang': {
+    var types = {
+        'Biker Gang': {
             prof: "raider",
             nicks: 100,
             traits: {"Motorcycling":1},
@@ -9104,7 +9512,7 @@ ion.encDb.register(
                     "Comanchero", "Devil's Disciples", "Diablos", "Finks", "58s", "Road Devils", 
                     "{Lone |}Legion", "Road {Devils|Knights}", "Skeleton Crew", "Low Riders"]
         },
-        'street gang': {
+        'Street Gang': {
             prof: "thief",
             nicks: 100,
             count: "1d4+1",
@@ -9114,34 +9522,34 @@ ion.encDb.register(
                     "Imperial Hoods", "Bulls", "Lightenings", "Crowns", "Senators", "Hawks", 
                     "Savages", "Lucky Seven", "Gents", "Enchanters"]
         },
-        'raiding gang': {
+        'Raiding Gang': {
             prof: "raider",
             count: "3d4-2",
             nicks: 90
         },
-        'scavenger party': {
+        'Scavenger Party': {
             prof: "scavenger",
             count: "1d4+1",
             nicks: 50
         },
         // TODO: Which isn't a group of working buckeroos. Those guys might have a chuck wagon and the like 
-        'cowboy posse': {  
+        'Cowboy Posse': {  
             prof: "rancher",
             count: "1d5+1",
             nicks: 20
         },
-        'cattle rustler gang': {
+        'Cattle Rustler Gang': {
             prof: ['rancher','rancher','scavenger','thief'],
             count: "1d3+1",
             nicks: 50
         },
-        'army patrol': {
+        'Army Patrol': {
             prof: 'army',
             count: "1d3*4",
             mil: 'army',
             nicks: 5
         },
-        'marine patrol': {
+        'Marine Patrol': {
             prof: 'marine',
             count: "1d3*4",
             mil: 'marine',
@@ -9167,7 +9575,7 @@ ion.encDb.register(
         ]
     };
     
-    var kindKeys = ion.keys(kinds);
+    var typeKeys = ion.keys(types);
     
     function rankPatrol(service, gang) {
         var prof = db.find(service);
@@ -9176,9 +9584,13 @@ ion.encDb.register(
             prof.assignRank(member);
             member.traits.Military = 1; // member.traits.Government
         });
-        var last = ion.last(gang.members);
+        // By luck, this may still produce a private and not someone of higher military rank.
+        var last = ion.last(gang.members), lowRank = gang.members[0].honorific;
         last.traits.Military = 4;
-        prof.assignRank(last);
+        do {
+            prof.assignRank(last);
+        } while (last.honorific === lowRank);
+        
     }
     function isFoodOrPersonal(item, count) {
         return item.is('food') || item.is('kit:personal');
@@ -9190,29 +9602,30 @@ ion.encDb.register(
     /**
      * Get the list of types that can be used when creating a gang.
      * 
-     *     atomic.getGangTypes
+     *     atomic.getGangTypes()
      *     => ["Biker Gang", ... "Marine Patrol"]
      *     
      * @static
-     * @method createGang
+     * @method getGangTypes
      * @for atomic
      * 
-     * @return {Array} An array of strings representing the types that can be used.
+     * @return {Array} The types of gangs. One of these values is a valid type for 
+     *      `atomic.createGang()`
      */
     atomic.getGangTypes = function() {
-        return kindKeys.map(function(key) { return ion.titleCase(key); }).sort();
+        return typeKeys.sort();
     };
     
     /**
      * @static
-     * @method getGangNickname
+     * @method assignNickname
      * @for atomic
      * 
      * @param character {ion.models.Character} the character to assign a nickname 
-     *      to. Name is changed on the character object.
+     *      to. Nickname is assigned to the character's name.
      * @return {String} the nick name
      */
-    atomic.getNickname = function(character) {
+    atomic.assignNickname = function(character) {
         var nicks = getNicks(character);
         character.name.nickname = ion.format(ion.random(ion.random(nicks)), character.name);
         return character.name.nickame;
@@ -9222,42 +9635,50 @@ ion.encDb.register(
      * Generate a gang (a group of people who are likely to be hostile to the players, and often 
      * returned as part of encounter creation). 
      * 
-     *     atomic.createGang('scavenger party', 6);
+     *     atomic.createGang({type: 'Scavenger Party', count: 6});
      *     => gang
      *     gang.members.length
      *     => 6
-     *     
-     * *Parameters can be in any order:*
      *     
      * @static
      * @method createGang
      * @for atomic
      *
-     * @param [params] {Object}
-     *     @param [params.kind] {String} the kind of gang. This encapsulates the number, traits, 
-     *      and other information about the gang. This is required.
+     * @param [params] {Object} params
+     *     @param [params.type] {String} the type of gang. This encapsulates the number, traits, 
+     *      and other information about the gang. 
      *     @param [params.count] {Number} the number of members in the gang. If no number is supplied, 
      *      a type-specific default will be used
      * @return {ion.models.Gang} the gang generated      
      */
-    atomic.createGang = function(opts) {
-        opts = opts || {};
-        opts.kind = opts.kind || ion.random(kindKeys);
-        opts.count = opts.count || ion.roll(kinds[opts.kind].count);
-
-        var gangType = kinds[opts.kind],
-            name = ion.random(ion.random(gangType.names)),
-            gang = new Gang({name: name, kind: opts.kind}); 
+    atomic.createGang = function(params) {
+        params = ion.extend({}, params || {});
         
-        ion.times(opts.count, function() {
+        var gangType = params.type || ion.random(typeKeys),
+            gangSpec = types[gangType]; 
+        
+        if (ion.isUndefined(gangSpec)) {
+            throw new Error("Invalid gang type: " + gangType);
+        }
+        
+        var count = ion.isNumber(params.count) ? params.count : ion.roll(gangSpec.count);
+        var opts = {
+            kind: gangType,
+        };
+        if (gangSpec.names) { // TODO: Calling random twice is... odd. And you do it below, too
+            opts.name = ion.random(ion.random(gangSpec.names));
+        }
+        var gang = new Gang(opts);
+        
+        ion.times(count, function() {
             var c = atomic.createCharacter({
-                "profession": ion.select(gangType.prof), 
-                "traits": gangType.traits || {}
+                "profession": ion.select(gangSpec.prof), 
+                "traits": gangSpec.traits || {}
             });
             c.initiative = ion.roll("2d6") + c.trait('Agile');
             c.hp = 10 + c.trait('Tough');
 
-            if (ion.test(gangType.nicks)) {
+            if (ion.test(gangSpec.nicks)) {
                 var nicks = getNicks(c);
                 c.name.nickname = ion.format(ion.random(ion.random(nicks)), c.name);
             }
@@ -9265,8 +9686,8 @@ ion.encDb.register(
             c.inventory.filter(isFoodOrPersonal);
             gang.add(c);
         });
-        if (gangType.mil) {
-            rankPatrol(gangType.mil, gang);
+        if (gangSpec.mil && gang.members.length) {
+            rankPatrol(gangSpec.mil, gang);
         }
         gang.members.sort(function(a,b) {
             return a.initiative < b.initiative ? 1 : a.initiative > b.initiative ? -1 : 0;
@@ -9291,9 +9712,12 @@ ion.encDb.register(
     };
     
     atomic.getRootLocations = function() {
+        throw new Error("Not implemented");
         // TODO: Some of these are too cryptic to just be tags and be usable, like 'infrastructure'
+        /*
         return ["agricultural","extractive","industrial","infrastructure","military","natural",
                 "rail","research","road","ruins","rural","settlement","tourism"];
+        */
     };
 
 })(atomic, ion);
@@ -9303,10 +9727,6 @@ ion.encDb.register(
     // TODO: What encounters occur in what general areas? How often?
     // TODO: Any other factor in determining whether an encounter occurs?
     // TODO: Random encounters are different than an encounter generator itself.
-    
-    atomic.createEncounter = function() {
-        return atomic.createGang();
-    };
 
     // - name
     // - attacks[name, damage, effect]
@@ -9318,15 +9738,46 @@ ion.encDb.register(
     // Killer Bee: Sting +1 for 3+2F, Agile 2, Armor 2, INI 10, HP 6, poisonous.
     // 4 Giant Ants: Bite -1 for 4+3F, Armor 5, INI 14, HP 8.
     // Or, one or more people with weapons.
-    
+    /*
     function combatPoints(character) {
         var sum = 10; // hp
         atomic.combatantTraits.forEach(function(attr) {
             sum += this.trait(attr);
         }, character);
         return sum;
-    }
+    }*/
+    
+    /**
+     * Create an encounter
+     * 
+     * @static
+     * @for atomic
+     * @method createEncounter
+     * @return {ion.models.Gang} always a gang, for now
+     */
+    atomic.createEncounter = function() {
+        return atomic.createGang();
+    };
 
+    /**
+     * 
+     * Get the list of traits that are counted when assessing the combat ability of a 
+     * character or creature.
+     * 
+     * @static
+     * @for atomic
+     * @method getCombatTraits
+     * 
+     * @return {Array} array of trait names
+     * 
+     */
+    atomic.getCombatTraits = function() {
+        return ["Agile", "Archery", "Athletics", "Cunning", "Driving", "Explosives", 
+           "Firearms", "Horseback Riding", "Intimidate", "Medicine", "Melee Weapons", 
+           "Military", "Motorcycling", "Stealth", "Strong", "Tough", "Tracking", 
+           "Trucking", "Unarmed Combat"];
+    };
+    
 })(atomic, ion);
 (function(atomic, ion, RarityTable) {
 
@@ -9341,11 +9792,11 @@ ion.encDb.register(
     
     // Woods, Forest, are not part of this terrain at all.
     var locative = {
-        'depression': ["Alley", "Arroyo", "Canyon", "Creek", "Gap", "Gulch", "Gully", "Hollow", "Valley"],
-        'flat': ["Flat{|s}", "Prairie", "Meadow{|s}", "Field", "Range", "Plain"],
-        'elevation': ["Bluffs", "Cliff", "Mountain", "Point", "Pass", "Spur", "Ridge", "Butte", "Mesa", "Gap", "Rock", "Hill{|s}", "Summit"],
-        'water': ["Spring{|s}", "Lake", "Pond", "Bar", "Basin", "Creek", "River", "Reservoir", "Rapids", "Stream", "Wetlands", "Falls", "Dam"],
-        'junction': ["Bend", "Junction", "Crossing"]
+        'Depression': ["Alley", "Arroyo", "Canyon", "Creek", "Gap", "Gulch", "Gully", "Hollow", "Valley"],
+        'Flat': ["Flat{|s}", "Prairie", "Meadow{|s}", "Field", "Range", "Plain"],
+        'Elevation': ["Bluffs", "Cliff", "Mountain", "Point", "Pass", "Spur", "Ridge", "Butte", "Mesa", "Gap", "Rock", "Hill{|s}", "Summit"],
+        'Water': ["Spring{|s}", "Lake", "Pond", "Bar", "Basin", "Creek", "River", "Reservoir", "Rapids", "Stream", "Wetlands", "Falls", "Dam"],
+        'Junction': ["Bend", "Junction", "Crossing"]
     },
 
     descriptive = [ "Adobe", "Antelope", "Ash", "Badger", "Bald", "Battle", "Bear", "Beaver", "Big", "Biscuit",
@@ -9409,9 +9860,9 @@ ion.encDb.register(
     var landforms = ion.keys(locative);
     
     /** 
-     * Generate a random name.
+     * Generate a random place name.
      * 
-     *     atomic.createPlaceName("water");
+     *     atomic.createPlaceName("Water");
      *     => "West Rock Springs"
      *     
      * @static
@@ -9422,15 +9873,12 @@ ion.encDb.register(
      * @return {String} name
      */
     atomic.createPlaceName = function(type) {
-        if (landforms.indexOf(type) === -1) {
-            type = ion.select(landforms);
-        } else if (landforms.indexOf(type) === -1) {
-            throw new Error("Unsupported place name type, try: " + landforms.join(", "));
-        }
+        type = (landforms.indexOf(type) === -1) ? ion.select(landforms) : type;
         return ion.random(ion.select(patterns.get()(type)));
     };
+    
     /**
-     * The valid types that can be used when calling the `atomic.createPlaceName` method.
+     * The valid types that can be used when calling the `atomic.createPlaceName()` method.
      * 
      * @static
      * @method getLandformTypes
@@ -9547,6 +9995,15 @@ ion.encDb.register(
         }
     }
     
+    /**
+     * Creates your typical cold-war sinister mega-corporation name.
+     * 
+     * @static
+     * @for atomic
+     * @method createCorporateName
+     * 
+     * @return {String} company name
+     */
     atomic.createCorporateName = function() {
         var name = createName();
         while(name.split(" ").length > 4) {
@@ -9559,87 +10016,190 @@ ion.encDb.register(
 })(atomic, ion, ion.tables.Table);
 
 (function(atomic, ion, Store, Table, Name) {
-
-    /*
+     
+    /* Merchant types (should be merchant, not shop/store):
+     * 
+     * bar/tavern/saloon
+     * diner
+     * food market
+     * bathhouse
+     * bookstore
+     * stables
+     * repair shop (electrical items)
+     * repair shop (mechanical items)
+     * general store
+     * pawn shop
+     * butcher
+     * gunsmith
+     * locksmith/blacksmith
+     * barbor
+     * tattoo parlor
+     * brewery/distillery/vineyard
+     * liquor store
+     * baker
+     * icehouse
+     * feed store
+     * livestock
+     * leather store (leatherworker)
+     * glassware
+     * pottery
+     * weaving
+     * clothing store
+     * furniture/woodworking
+     *  - sporting goods store (ammo, camping)
+     * biker shop/head shop
+     * five and dime store/souvenir shop/drugstore
+     * 
+     * OLD (pre-war, would these be included?)
+     * robot showroom
+     * automobile showroom
+     * office
+     * 
+     * Name:
+     * - this is always the fun part. Really these are like naming strategies?
+     *      Forty-Rod, Tarantula Juice, Taos Lightning, and Coffin Varnish
+     *      Saloons: Bull's Head, Holy Moses
+     *      
+     * Owner:
+     * ["gang", "Biker Gang"] or
+     * ["character", {profession: "trader", traits: {"pottery":4}] - also include relationships
+     * etc.
+     * 
+     * Frequency:
+     * - C/U/R, a very blunt instrument but it's been OK so far
+     *      size, frequency and location are interrelated somehow
+     * 
      * Location:
-     *  - settlement
-     *  - roadside
-     *  - facility (military, research)
-     *  - market (fairgrounds, farmers market, flea market?)
+     * - roadside, camp, settlement, military, market (open air, e.g. fairgrounds)
      * 
-     * Trade policies
+     * Size (allowable sizes for a type, each with a different inventory and different name):
      * 
-     * That would be a pretty good start
+     * - vendor (single person with like a blanket on the ground)
+     * - cart (cart, table, stand, stall)
+     * - building (tent, cabin, building)
+     * - warehouse (warehouse, depot, building)
+     * 
+     * Sells: description of what is sold. Not everything that is sold is useful or in the 
+     *  inventory that would be generated, if any. e.g. "pottery cart (pots 2 TU each)".
+     *   
+     * Buys: anything interesting about what the establishment will buy or trade for, and 
+     * at what price
+     * 
+     * Inventory: actually useful stuff for sale with trade units, a bag spec, e.g.
+     * {totalValue: <sizeBased>, query: "food | ammo", fillBag: false} - always false.
+     * 
+     * TESTS
+     *  - can't submit "Cash On Hand" as a type.
+     *  - can submit another type.
      */
-    
-    // depot, warehouse, 
-
-    // Forty-Rod, Tarantula Juice, Taos Lightning, and Coffin Varnish
-    // Saloons: Bull's Head, Holy Moses
-
+    /*
     var kinds = {
-        "settlement": ["General Store", "Shop", "Store", "Market", "Mercantile", "Trading Post"]
+        settlement: ["General Store", "Shop", "Store", "Market", "Mercantile", "Trading Post"]
     };
+    */
     
+    // The size of the shop matters here. For small shops, you might just use the 
+    // merchant's first name. And the kind name would no longer be random like this.
     var nameStrategies = new Table();
-    nameStrategies.add(50, function(familyName) {
-        return atomic.createPlaceName() + " " + ion.random(kinds.settlement);
+    nameStrategies.add(50, function(ownerName, placeName, nameString) {
+        return placeName + " " + ion.random(nameString);
     });
-    nameStrategies.add(10, function(familyName) { // possessive
-        var p = familyName + (/[sz]$/.test(familyName)) ? "'" : "'s";
-        return familyName + " " + ion.random(kinds.settlement); 
+    nameStrategies.add(25, function(ownerName, placeName, nameString) { // possessive
+        var p = (/[sz]$/.test(ownerName)) ? "'" : "'s";
+        return ownerName + p + " " + ion.random(nameString); 
     });
-    nameStrategies.add(40, function(familyName) {
-        var biz = ion.random(kinds.settlement);
-        while (biz === "Shop")  { biz = ion.random(kinds.settlement); }
-        return familyName + " " + biz; 
+    nameStrategies.add(25, function(ownerName, placeName, nameString) {
+        var biz = ion.random(nameString);
+        //while (biz === "Shop")  { biz = ion.random(nameString); }
+        return ownerName + " " + biz; 
     });
     
     var ownerStrategies = new Table();
-    ownerStrategies.add(20, function(familyName) {
-        return atomic.createRelationship({profession: 'trader', familyName: familyName});
+    ownerStrategies.add(20, function(config) {
+        return atomic.createRelationship(config);
     });
-    ownerStrategies.add(65, function(familyName) {
-        var name = atomic.createCharacterName({family: familyName});
-        return atomic.createCharacter({profession: 'trader', name: name});
+    ownerStrategies.add(65, function(config) {
+        var c = atomic.createCharacter(config);
+        c.name = atomic.createCharacterName({family: c.name.family, gender: c.gender});
+        return c;
     });
-    ownerStrategies.add(15, function(familyName) {
-        var name = atomic.createCharacterName({family: familyName});
-        var c = atomic.createCharacter({profession: 'trader', name: name});
-        atomic.getNickname(c);
+    ownerStrategies.add(15, function(config) {
+        var c = atomic.createCharacter(config);
+        c.name = atomic.createCharacterName({family: c.name.family, gender: c.gender});
+        atomic.assignNickname(c);
         return c;
     });
     
     
-    // Would need to be able to pass a place name into this method. Which would
-    // be used a lot of the time, not all of the time.
-    atomic.createStore = function(opts) {
-        var name = atomic.createCharacterName();
-        opts = opts || {};
-        opts.name = opts.name || nameStrategies.get()(name.family);
-        opts.owner = opts.owner || ownerStrategies.get()(name.family);
+    /**
+     * Create a merchant. Note that there are many parameter options, some mutually 
+     * exclusive. You would only pass in an owner's name or the owner character, not both, 
+     * for example. Passing in a place name does not guarantee it will be used in the store 
+     * name, but if you pass in the store name, it'll be used as is. And so forth.
+     * 
+     * @static
+     * @method createStore
+     * @for atomic
+     * 
+     * @param [params] {Object}
+     *     @param [params.name] {String} name of the store
+     *     @param [params.placeName] {String} place name where the store is located
+     *     @param [params.owner] {ion.models.Character} the store owner
+     *     @param [params.value] {Number} value of the store's inventory in trade units
+     *     @param [params.tags] {String} tag query for a store type, e.g. "roadside" 
+     *          or "settlement" or "stall" 
+     *     
+     * @return {ion.models.Store} the store
+     */
+    atomic.createStore = function(params) {
+        params = ion.extend({}, params || {});
+        params.tags = params.tags || "*";
         
-        var inventory = atomic.createBag("fresh food", false, 20);
-        
-        // It's a store, pad the stuff they have, relative to its value
-        inventory.entries.forEach(function(entry) {
-            if (entry.count < 2 && entry.item.not("luxury") && entry.item.not("rare")) {
-                var count = ion.roll("1d3")*(4-(entry.item.value+"").length)*2;
-                inventory.add(entry.item, count);
+        // Still don't quite have the name/size of store thing down.
+        var config = ion.storeDb.find(ion.toTag(params.tags));
+        var owner = params.owner;
+        if (!owner) {
+            if (atomic.getGangTypes().indexOf(config.owner.profession) > -1) { // it's a gang
+                owner = atomic.createGang({type: config.owner.profession});
+            } else { // it's a character or relationship.
+                owner = ownerStrategies.get()(config.owner);
             }
-        });
-        inventory.addBag( atomic.createBag("preserved food", false, 20) );
+        }
+        var ownerName;
+        if (owner.name) {
+            ownerName = owner.name;
+        } else if (owner.kind) {
+            ownerName = owner.kind;
+        } else if (owner.older) {
+            ownerName = owner.older.name.family;
+        } else {
+            throw new Error("Could not determine an owner name for this type", config);
+        }
         
-        var onhand = atomic.createContainer("Currency on hand");
-        
+        var name = params.name;
+        if (!name) {
+            var placeName = params.placeName || atomic.createPlaceName();
+            name = nameStrategies.get()(ownerName, placeName, ion.select(config.names));
+        }
+        var inventory;
+        if (config.inventory) {
+            if (config.inventory.cluster === "none") {
+                inventory = atomic.createBag(config.inventory);
+            } else {
+                inventory = atomic.createStockpile(config.inventory);
+            }
+        } else {
+            inventory = new ion.models.Bag();
+        }
+        var onhand = atomic.createContainer("Cash On Hand");
+
         return new Store({
-            name: opts.name || nameStrategies.get()(name),
-            owner: opts.owner || ownerStrategies.get()(name),
-            inventory: inventory,
-            onhand: onhand
+            name: name,
+            policy: config.policy ? ion.random(config.policy) : null,
+            owner: owner,
+            onhand: onhand,
+            inventory: inventory
         });
-        
-        
     };
 
 })(atomic, ion, ion.models.Store, ion.tables.Table, ion.models.Name);
@@ -9648,7 +10208,7 @@ ion.encDb.register(
     // This creates pretty normal families. As always, the generators are for on-the-spot
     // filler material, and aim for believability. Make up the more unusual families in 
     // your world.
-
+    
     var innate = db.find('innate');
     
     var relationships = {
@@ -9692,11 +10252,11 @@ ion.encDb.register(
     
     function makeFamily(parent, kin) {
         var gender = (parent.male) ? "female" : "male";
-        var race = atomic.getRace();
+        var race = atomic.createRace();
         var other = new ion.models.Character({
             "name": atomic.createCharacterName({gender: gender, race: race}),
             "race": race,
-            "profession": getRelatedProfession(parent.profession),
+            "profession": getRelatedProfession(kin[0].profession),
             "gender": gender,
             "age": ion.bounded(parent.age+ion.gaussian(3), 18)
         });
@@ -9746,7 +10306,8 @@ ion.encDb.register(
         child.name.family = family.male.name.family;
         // This is a gap in the ages of the family.
         ageKin(kin, child.age + ion.roll("1d3-1"));
-        family.addChild(child);
+        family.children.push(child);
+        child.family = family;
     }
     
     function ageFamilyUntilChildIsAdult(family, kin) {
@@ -9769,6 +10330,9 @@ ion.encDb.register(
     }
     
     function getRelatedProfession(profession) {
+        if (!profession) {
+            throw new Error("There should alwasy be a related profession");
+        }
         var prestige = ion.intersection(["high","low","normal"], db.find(ion.toTag(profession)).tags);
         return (ion.test(40)) ? profession : db.find(prestige + " -pre -innate").names[0];
     }
@@ -9776,22 +10340,14 @@ ion.encDb.register(
     function postProcess(kin) {
         kin.forEach(function(person) {
             // train
-            if (person.age >= 18) {
-                var c = atomic.createCharacter({
-                    "name": person.name,
-                    "profession": getRelatedProfession(kin[0].profession),
-                    "age": person.age, 
-                    "gender": person.gender,
-                    "equip": false
-                });
-                ion.extend(person, c);
-            } else {
-                innate.train(person, ion.roll("1d3-1"));
-                // This can make a 4-year-old "attractive". Too creepy.
-                if (person.age < 16) {
-                    delete person.traits.Attractive;    
-                }
-            }
+            var c = atomic.createCharacter({
+                "name": person.name,
+                "profession": person.profession || getRelatedProfession(kin[0].profession),
+                "age": person.age, 
+                "gender": person.gender,
+                "equip": false
+            });
+            ion.extend(person, c);
 
             // deaths
             var family = person.family;
@@ -9808,47 +10364,11 @@ ion.encDb.register(
             } else if (ion.test(Math.sqrt(person.age))) {
                 person.status = "deceased";
             }
+            if (person.profession) {
+                person.inventory = atomic.createKit({profession: person.profession});    
+            }
         });
     }
-    
-    /**
-     * Create a nuclear family, usually with children. Useful for creating settlers, 
-     * shop owners, encounters, etc. Options passed to this method will be used 
-     * to create the father of the family (age, occupation), and it goes from there. 
-     * 
-     * @static
-     * @method createFamily
-     * @for atomic
-     * 
-     * @param [params] {Object} parameters to pass to one of the first parents of the family.
-     *      @param [params.generations=2] {Number} number of generations in the family created
-     *          (one generation is a couple, two generations includes their children, three 
-     *          their grand-children, above 3 you're going to get a history lesson). 
-     *      @param [params.parent] {Object} the parameters to pass to the first character 
-     *          generation call, that seeds the first parent of the family (and thus the 
-     *          profession for the family, among other traits).
-     * @returns {ion.models.Family} a family object with a mother, father, and array of 
-     *      `children` characters.
-     */
-    atomic.createFamily = function(opts) {
-        opts = opts || {};
-        opts.generations = opts.generations || 2;
-        opts.parent = opts.parent || {};
-        opts.parent.age = (opts.parent.age || getAdultAge());
-
-        // TODO: This character's profession isn't reflected in the final results, not sure why. 
-        // This is generation 0.
-        var parent = atomic.createCharacter(opts.parent), 
-            kin = [parent], 
-            family = makeFamily(parent, kin),
-            root = family;
-
-        if (opts.generations > 1) {
-            nextGeneration(family, kin, 1, opts.generations);
-        }
-        postProcess(kin);
-        return root;
-    };
     
     function nextGeneration(family, kin, i, gen) {
         makeChildren(family, kin);
@@ -9877,20 +10397,74 @@ ion.encDb.register(
         }));
     }
     */
+    
+    /**
+     * Create a nuclear family, with a specified number of generations.  
+     * 
+     * @static
+     * @method createFamily
+     * @for atomic
+     * 
+     * @param [params] {Object} params
+     *      @param [params.generations=2] {Number} number of generations in the family (one 
+     *          generation is a couple, two generations includes their children, three 
+     *          their grand-children, above 3 you're going to get a history lesson). 
+     *      @param [params.parent] {Object} the parameters to pass to the first character 
+     *          created, that will set the profession, race and name of sub-generations. 
+     * @returns {ion.models.Family} a family
+     */
+    atomic.createFamily = function(opts) {
+        opts = opts || {};
+        opts.generations = opts.generations || 2;
+        opts.parent = opts.parent || {};
+        opts.parent.age = (opts.parent.age || getAdultAge());
+
+        var parent = atomic.createCharacter(opts.parent), 
+            kin = [parent], 
+            family = makeFamily(parent, kin),
+            root = family;
+
+        if (opts.generations > 1) {
+            nextGeneration(family, kin, 1, opts.generations);
+        }
+        postProcess(kin);
+        return root;
+    };
+    
+    /**
+     * Get a list of valid relationships. These are the valid values to pass to the 
+     * `atomic.createRelationship()` method. 
+     * 
+     * @static
+     * @method getRelationships
+     * @for atomic
+     * 
+     * @return {Array} a list of relationship names
+     */
     atomic.getRelationships = function() {
-        return relNames;
+        return relNames.sort();
     };
    
     /**
-     * @param [params] {Object} parameters to pass to create relationships
-     *      @param params.older {String} name of the older or lateral relationship (e.g. "aunt" or 
+     * 
+     * Creates a pair of characters who are related to each other. Both characters will be 
+     * adults (you an adjust the ages and ignore the adult traits, if needed).
+     * 
+     * @static
+     * @method createRelationship
+     * @for atomic
+     * 
+     * @param [params] {Object} params
+     *      @param [params.older] {String} name of the older or lateral relationship (e.g. "aunt" or 
      *          "sister").  The younger or lateral relationship is derived from the older term.
-     *      @param params.profession {String} the profession for the related people
-     *      @param params.familyName {String} the last name to share between relations
+     *      @param [params.profession] {String} the profession for the related people
+     *      @param [params.familyName] {String} the last name to share between relations
+     *      @param [params.equip] {Boolean} should these characters be equipped?
      */
-    atomic.createRelationship = function(opts) {
-        opts = opts || {};
-        var olderRel = (opts.older) ? relationships[opts.older.toLowerCase()] : rtable.get();
+    atomic.createRelationship = function(params) {
+        params = ion.extend({}, params || {});
+        params.equip = ion.isBoolean(params.equip) ? params.equip : true;
+        var olderRel = (params.older) ? relationships[params.older.toLowerCase()] : rtable.get();
         var youngerRel = relationships[ ion.random(olderRel.r) ];
         
         // Order the terms:
@@ -9908,18 +10482,20 @@ ion.encDb.register(
         var older = atomic.createCharacter({
                 age: olderAge, 
                 gender: olderRel.g, 
-                profession: opts.profession
+                profession: params.profession,
+                equip: params.equip
             }),
             younger = atomic.createCharacter({
                 age: youngerAge, 
-                race: ion.test(olderRel.n) ? older.race : atomic.getRace(),
+                race: ion.test(olderRel.n) ? older.race : atomic.createRace(),
                 gender: youngerRel.g, 
-                profession: opts.profession
+                profession: params.profession,
+                equip: params.equip
             }),
             relName = (olderRel === youngerRel) ? (olderRel.name + "s") : (olderRel.name+" and "+youngerRel.name);
             
-        if (opts.familyName) {
-            older.name.family = opts.familyName;    
+        if (params.familyName) {
+            older.name.family = params.familyName;    
         }    
         if (ion.test(olderRel.n)) {
             younger.name.family = older.name.family;
@@ -9929,6 +10505,36 @@ ion.encDb.register(
     
 })(atomic, ion, ion.profDb, ion.models.Family, ion.tables.RarityTable);
 
+(function() {
+    
+    var MORE = " More&hellip;";
+    var LESS = " Less&hellip;";
+    
+    function clickHandler(more) {
+        return function(e) {
+            var alt = (more.style.display === "none") ? "block" : "none";
+            more.style.display = alt;
+            e.target.innerHTML = (alt === "block") ? LESS : MORE;
+        };       
+    }
+    
+    window.updateMoreLinks = function() {
+        var mores = document.querySelectorAll(".more");
+        for (var i=0; i < mores.length; i++) {
+            var more = mores[i];
+            more.style.display = 'none'; 
+            if (more.__processed) { continue; }
+
+            var a = document.createElement("a");
+            a.innerHTML = MORE;
+            a.addEventListener("click", clickHandler(more));
+            
+            var previous = more.previousElementSibling;
+            previous.appendChild(a);
+        }
+    };
+    
+})();
 (function(_) {
     
     var mobile = ('ontouchstart' in document.documentElement),
@@ -10017,7 +10623,7 @@ ion.encDb.register(
     function getSimplerProfs() {
         // Removes the individual branches and replaces with a generic soldier category, adds "Any" 
         // which currently ends up as first in list, which is correct
-        return ["Any", "Soldier"].concat(_.without(window.c_profs, "Air Force","Marine","Army","Navy","Coast Guard")).sort(); 
+        return ["Any", "Soldier"].concat(_.without(atomic.getProfessions(), "Air Force","Marine","Army","Navy","Coast Guard")).sort(); 
     }
     
     var Panel = _.define({
@@ -10102,6 +10708,9 @@ ion.encDb.register(
                 this.output = html;
                 radio('history').broadcast({type: this.type, text: string});
                 window.scrollTo(0,1);
+                
+                updateMoreLinks();
+                
             }.bind(this), 1);
         },
         makeCall: function() {
@@ -10161,17 +10770,17 @@ ion.encDb.register(
     var LootBuilderViewModel = _.define(BaseBuilder, {
         init: function() {
             BaseBuilder.call(this, 'loot');
-            this.locations = ['Any'].concat(window.c_locations);
-            this.selectedLocation = 'Any';
+            this.places = ['Any'].concat(atomic.getPlaces());
+            this.selectedPlace = 'Any';
             this.professions = getSimplerProfs();
             this.selectedProfession = 'Any';
             this.totalValue = 20;
-            ko.track(this, ['locations','selectedLocation','professions','selectedProfession','totalValue']);
+            ko.track(this, ['places','selectedPlace','professions','selectedProfession','totalValue']);
         },
         onChange: function(view, event) {
             // You don't get meaningful results unless only one of these is set.
             var coll = event.target.name;
-            ["selectedLocation","selectedProfession"].forEach(function(prop) {
+            ["selectedPlace","selectedProfession"].forEach(function(prop) {
                 if (prop !== coll) {
                    this[prop] = "Any";
                 }
@@ -10182,13 +10791,13 @@ ion.encDb.register(
                 this.totalValue = 20;
                 radio('message').broadcast("Value out of range, using the default value of 20.");
             }
-            var args = [parseInt(this.totalValue,10)];
-            if (this.selectedLocation !== "Any") {
-                args.push(this.selectedLocation.toLowerCase());
+            var opts = {tags: [], totalValue: parseInt(this.totalValue,10)};
+            if (this.selectedPlace !== "Any") {
+                opts.tags.push(this.selectedPlace.toLowerCase());
             } else if (this.selectedProfession !== "Any") {
-                args.push("kit:"+ion.toTag(this.selectedProfession));    
+                opts.tags.push("kit:"+ion.toTag(this.selectedProfession));    
             }
-            return atomic.createBag.apply(atomic, args);
+            return atomic.createBag(opts);
         }
     });
     var ContainersBuilderViewModel = _.define(BaseBuilder, {
@@ -10200,18 +10809,22 @@ ion.encDb.register(
         },
         makeCall: function() {
             var type = this.selectedContainer;
-            if (type === "Any") {
-                type = _.random(atomic.getContainerTypes());
-            }
             return atomic.createContainer(type);
         }
     });
     var StoreBuilderViewModel = _.define(BaseBuilder, {
         init: function() {
             BaseBuilder.call(this, 'store');
+            this.locations = ['Any'].concat(atomic.getLocations());
+            this.selectedLocation = 'Any';
+            ko.track(this, ['locations','selectedLocation']);
         },
         makeCall: function() {
-            return atomic.createStore();
+            var opts = {};
+            if (this.selectedLocation !== 'Any') {
+                opts.tags = this.selectedLocation;
+            }
+            return atomic.createStore(opts);
         }
     });
     var WeatherBuilderViewModel = _.define(BaseBuilder, {
@@ -10243,7 +10856,7 @@ ion.encDb.register(
             ko.track(this, ['geographies','selectedGeography']);
         },
         makeCall: function() {
-            return atomic.createPlaceName(this.selectedGeography.toLowerCase());
+            return atomic.createPlaceName(this.selectedGeography);
         }
     });
     var FamilyBuilderViewModel = _.define(BaseBuilder, {
@@ -10291,7 +10904,6 @@ ion.encDb.register(
             ko.track(this, ['mod','output','descr']);
         },
         setMod: function(a, event) {
-            // Ew. Ick. Jesus Christ.
             [].slice.call(event.target.parentNode.parentNode.querySelectorAll(".btn")).forEach(function(sib) {
                 sib.classList.remove( sib.getAttribute('data-active') );
             });

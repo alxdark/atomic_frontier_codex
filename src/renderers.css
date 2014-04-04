@@ -23,4 +23,11 @@
 }
 .title {
     font-weight: bold;
+    margin-bottom: 0rem;
+}
+a {
+    cursor: pointer;
+}
+.more {
+    font-style: italic;
 }

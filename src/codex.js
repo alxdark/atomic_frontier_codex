@@ -86,7 +86,7 @@
     function getSimplerProfs() {
         // Removes the individual branches and replaces with a generic soldier category, adds "Any" 
         // which currently ends up as first in list, which is correct
-        return ["Any", "Soldier"].concat(_.without(window.c_profs, "Air Force","Marine","Army","Navy","Coast Guard")).sort(); 
+        return ["Any", "Soldier"].concat(_.without(atomic.getProfessions(), "Air Force","Marine","Army","Navy","Coast Guard")).sort(); 
     }
     
     var Panel = _.define({
@@ -171,6 +171,9 @@
                 this.output = html;
                 radio('history').broadcast({type: this.type, text: string});
                 window.scrollTo(0,1);
+                
+                updateMoreLinks();
+                
             }.bind(this), 1);
         },
         makeCall: function() {
@@ -230,17 +233,17 @@
     var LootBuilderViewModel = _.define(BaseBuilder, {
         init: function() {
             BaseBuilder.call(this, 'loot');
-            this.locations = ['Any'].concat(window.c_locations);
-            this.selectedLocation = 'Any';
+            this.places = ['Any'].concat(atomic.getPlaces());
+            this.selectedPlace = 'Any';
             this.professions = getSimplerProfs();
             this.selectedProfession = 'Any';
             this.totalValue = 20;
-            ko.track(this, ['locations','selectedLocation','professions','selectedProfession','totalValue']);
+            ko.track(this, ['places','selectedPlace','professions','selectedProfession','totalValue']);
         },
         onChange: function(view, event) {
             // You don't get meaningful results unless only one of these is set.
             var coll = event.target.name;
-            ["selectedLocation","selectedProfession"].forEach(function(prop) {
+            ["selectedPlace","selectedProfession"].forEach(function(prop) {
                 if (prop !== coll) {
                    this[prop] = "Any";
                 }
@@ -251,13 +254,13 @@
                 this.totalValue = 20;
                 radio('message').broadcast("Value out of range, using the default value of 20.");
             }
-            var args = [parseInt(this.totalValue,10)];
-            if (this.selectedLocation !== "Any") {
-                args.push(this.selectedLocation.toLowerCase());
+            var opts = {tags: [], totalValue: parseInt(this.totalValue,10)};
+            if (this.selectedPlace !== "Any") {
+                opts.tags.push(this.selectedPlace.toLowerCase());
             } else if (this.selectedProfession !== "Any") {
-                args.push("kit:"+ion.toTag(this.selectedProfession));    
+                opts.tags.push("kit:"+ion.toTag(this.selectedProfession));    
             }
-            return atomic.createBag.apply(atomic, args);
+            return atomic.createBag(opts);
         }
     });
     var ContainersBuilderViewModel = _.define(BaseBuilder, {
@@ -269,18 +272,22 @@
         },
         makeCall: function() {
             var type = this.selectedContainer;
-            if (type === "Any") {
-                type = _.random(atomic.getContainerTypes());
-            }
             return atomic.createContainer(type);
         }
     });
     var StoreBuilderViewModel = _.define(BaseBuilder, {
         init: function() {
             BaseBuilder.call(this, 'store');
+            this.locations = ['Any'].concat(atomic.getLocations());
+            this.selectedLocation = 'Any';
+            ko.track(this, ['locations','selectedLocation']);
         },
         makeCall: function() {
-            return atomic.createStore();
+            var opts = {};
+            if (this.selectedLocation !== 'Any') {
+                opts.tags = this.selectedLocation;
+            }
+            return atomic.createStore(opts);
         }
     });
     var WeatherBuilderViewModel = _.define(BaseBuilder, {
@@ -312,7 +319,7 @@
             ko.track(this, ['geographies','selectedGeography']);
         },
         makeCall: function() {
-            return atomic.createPlaceName(this.selectedGeography.toLowerCase());
+            return atomic.createPlaceName(this.selectedGeography);
         }
     });
     var FamilyBuilderViewModel = _.define(BaseBuilder, {
@@ -360,7 +367,6 @@
             ko.track(this, ['mod','output','descr']);
         },
         setMod: function(a, event) {
-            // Ew. Ick. Jesus Christ.
             [].slice.call(event.target.parentNode.parentNode.querySelectorAll(".btn")).forEach(function(sib) {
                 sib.classList.remove( sib.getAttribute('data-active') );
             });

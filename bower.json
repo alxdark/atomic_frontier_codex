@@ -13,6 +13,7 @@
       "bower_components"
    ],
    "dependencies":{
+      "bootstrap": "",
       "radio":"uxder/Radio#v0.2.0",
       "humane-js":"wavded/humane-js#3.1.0",
       "knockout":"bowerjs/knockout#v3.0.0",
