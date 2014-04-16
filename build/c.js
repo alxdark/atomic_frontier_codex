@@ -5199,6 +5199,8 @@ void function(global, undefined_, undefined){
 })
 
 ;(function() {
+    "use strict";
+    
     window.ion = window.ion || {};
 
     var DIE_PARSER  = /\d+d\d+/g,
@@ -5635,9 +5637,11 @@ void function(global, undefined_, undefined){
          * 
          * @param array {Array} The array to format
          * @param func {Function} An optional function to format the elements of the array in the returned string.
+         * @param [join=and] {String} the word to join the last word in the list.
          * @return {String} the array formatted as a list.
          */
-        toList: function(array, func) {
+        toList: function(array, func, join) {
+            join = join || "and";
             func = func || function(s) { return s.toString(); };
             var len = array.length;
             if (len === 0) {
@@ -5645,10 +5649,10 @@ void function(global, undefined_, undefined){
             } else if (len === 1) {
                 return func(array[0]);
             } else if (len === 2) {
-                return func(array[0]) + " and " + func(array[1]);
+                return func(array[0]) + " " + join + " " + func(array[1]);
             } else {
                 var arr = array.map(func);
-                arr[arr.length-1] = "and " + arr[arr.length-1];
+                arr[arr.length-1] = join + " " + arr[arr.length-1];
                 return arr.join(", ");
             }
         },          
@@ -5927,7 +5931,8 @@ void function(global, undefined_, undefined){
  * @class ion.Builder
  */
 ion.Builder = (function() {
-
+    // throws lots of errors in strict mode jshint, doesn't like this style of (legal) code 
+    
     var map = Array.prototype.map;
 
     /**
@@ -6115,11 +6120,12 @@ ion.Builder = (function() {
 })();
 
 (function(ion) {
+    "use strict";
     
     ion.dice = ion.dice || {};
 
-    function sum() {
-        this.value = [].reduce.call(this, function(sum, die) { return sum + die.value; }, 0);
+    function sum(dice) {
+        dice.value = [].reduce.call(dice, function(sum, die) { return sum + die.value; }, 0);
     }
     
     ion.dice.Die = ion.define({
@@ -6240,7 +6246,7 @@ ion.Builder = (function() {
                     this[this.length++] = arguments[i];
                 }
             }
-            sum.call(this);
+            sum(this);
         },
         /**
          * Add a die to this set of dice.
@@ -6250,7 +6256,7 @@ ion.Builder = (function() {
          */
         push: function(die) {
             this[this.length++] = die;
-            sum.call(this);
+            sum(this);
         },
         /**
          * Roll this set of dice.
@@ -6260,7 +6266,7 @@ ion.Builder = (function() {
          */
         roll: function() {
             [].map.call(this, function(obj) { return obj.roll(); });
-            sum.call(this);
+            sum(this);
             return this.value;
         },
         /**
@@ -6274,6 +6280,8 @@ ion.Builder = (function() {
     
 })(ion);
 (function(ion) {
+    "use strict";
+    
     ion.tables = ion.tables || {};
     
     ion.tables.Table = ion.define({
@@ -6346,7 +6354,7 @@ ion.Builder = (function() {
          */
         get: function() {
             if (Math.round(this.sum) !== 100) {
-                throw Error("Table elements do not add up to 100%, but rather to " + Math.round(this.sum));
+                throw new Error("Table elements do not add up to 100%, but rather to " + Math.round(this.sum));
             }
             var result = ion.roll(100);
             for (var i=0, len = this.rows.length; i < len; i++) {
@@ -6368,6 +6376,7 @@ ion.Builder = (function() {
 })(ion);
 
 (function(ion) {
+    "use strict";
     
     ion.tables.RarityTable = ion.define(ion.tables.Table, {
         /**
@@ -6468,6 +6477,7 @@ ion.Builder = (function() {
 
 
 (function(ion) {
+    "use strict";
     
     ion.tables.HashTable = ion.define({
         /**
@@ -6609,8 +6619,13 @@ ion.models.Model = ion.define({
      * @method clone
      * @return {ion.models.Model} clone
      */
-    clone: function() {
-        return ion.models.Model.create(JSON.stringify(this));
+    clone: function(freeze) {
+        freeze = ion.isBoolean(freeze) ? freeze : Object.isFrozen(this);
+        var model = ion.models.Model.create(JSON.stringify(this));
+        if (freeze) {
+            return Object.freeze(model);
+        }
+        return model;
     }
 });
 /**
@@ -6748,12 +6763,13 @@ ion.models.Item = ion.define(ion.models.Model, {
 });
 
 (function(ion, Item, Model) {
-
+    "use strict";
+    
     function sortByName(a,b) {
         return (a.item.name > b.item.name) ? 1 : (a.item.name < b.item.name) ? -1 : 0;
     }
-    function findEntry(item) {
-        return this.entries.filter(function(entry) {
+    function findEntry(bag, item) {
+        return bag.entries.filter(function(entry) {
             return entry.item.name === item.name;
         })[0];
     }
@@ -6763,9 +6779,9 @@ ion.models.Item = ion.define(ion.models.Model, {
     function countParam(count) {
         return (typeof count == "number") ? count : 1;
     }
-    function sum(item, field) {
+    function sum(bag, item, field) {
         item = itemParam(item);
-        return this.entries.filter(function(entry) {
+        return bag.entries.filter(function(entry) {
             return (!item || (item.name === entry.item.name));
         }).reduce(function(sum,entry) {
             var value = (field) ? entry.item[field] : 1;
@@ -6826,7 +6842,7 @@ ion.models.Item = ion.define(ion.models.Model, {
             }
             item =  itemParam(item);
             count = countParam(count);
-            var entry = findEntry.call(this, item);
+            var entry = findEntry(this, item);
     
             if (count < 0) {
                 throw new Error("Can't add negative items to bag: " + count);
@@ -6859,7 +6875,7 @@ ion.models.Item = ion.define(ion.models.Model, {
         remove: function(item, count) {
             item = itemParam(item);
             count = countParam(count);
-            var entry = findEntry.call(this, item);
+            var entry = findEntry(this, item);
     
             if (!entry) {
                 throw new Error("Can't remove item that's not in the bag");
@@ -6910,7 +6926,7 @@ ion.models.Item = ion.define(ion.models.Model, {
          * @return {Number} the total value of the items in the bag
          */
         value: function(item) {
-            return sum.call(this, item, "value");
+            return sum(this, item, "value");
         },
         /**
          * Sum the encumbrance of all items in this bag. Can also provide a sum for an individual
@@ -6921,7 +6937,7 @@ ion.models.Item = ion.define(ion.models.Model, {
          * @return {Number} the total encumbrance of the items in the bag
          */
         enc: function(item) {
-            return sum.call(this, item, "enc");
+            return sum(this, item, "enc");
         },
         /**
          * The count of all items in this bag. Can also provide the count of an individual
@@ -6932,7 +6948,7 @@ ion.models.Item = ion.define(ion.models.Model, {
          * @return {Number} the total count of the items in the bag
          */
         count: function(item) {
-            return sum.call(this, item);
+            return sum(this, item);
         },
         /**
          * Given a prefix like `ammo` or `media`, will return every item that contains a tag with 
@@ -7185,6 +7201,7 @@ ion.models.Character =  ion.define(ion.models.Model, {
 });
 
 (function(ion) {
+    "use strict";
     
     var MAX_TRAIT_VALUE = 4;
     
@@ -7500,7 +7517,8 @@ ion.models.Store =  ion.define(ion.models.Model, {
 });
 
 (function(ion, m, Builder, Character, Relationship) {
-
+    // Throws lots of errors in strict mode
+    
     var r = ion.renderers = {};
 
     function coupleNames(family, relationship) {
@@ -7774,9 +7792,11 @@ ion.models.Store =  ion.define(ion.models.Model, {
     r.storeString = function() {
         var b = Builder(this); // Not as thorough as as the html version
         b(this.name)(". ");
-        b("Owner(s): " + this.owner.toString());
-        b("Inventory: " + this.inventory.toString())(" ");
-        b("Cash on hand: " + this.onhand.toString());
+        b("Owner(s): " + this.owner.toString())(" ");
+        b("For Trade: ");
+        b(!!this.policy, this.policy + " ");
+        b(this.inventory.toString());
+        b(this.onhand.toString());
         return b.toString();
     };
     r.storeHTML = function() {
@@ -7786,7 +7806,6 @@ ion.models.Store =  ion.define(ion.models.Model, {
         b("div", {class: "owner"}, function(b) {
             b("p", {class: "title"}, function(b) { b("Owner(s)"); });
             b(this.owner.toHTML());
-            b("p", {}, this.onhand.toString());
         });
         b("p", {class: "title"}, "For Trade");
         b(!!this.policy, function() {
@@ -7812,6 +7831,7 @@ ion.models.Store =  ion.define(ion.models.Model, {
                 */
             });
         });
+        b("p", {}, this.onhand.toString());
         
         return b.toString();
     };
@@ -7836,6 +7856,7 @@ ion.models.Store =  ion.define(ion.models.Model, {
     
 })(ion, ion.models, ion.Builder, ion.models.Character, ion.models.Relationship);
 (function(ion, RarityTable, Item) {
+    "use strict";
     
     ion.db = ion.db || {};  
     
@@ -7854,11 +7875,12 @@ ion.models.Store =  ion.define(ion.models.Model, {
         return result;        
     }
     // This really just loops, matches and returns without knowing anything about it.
-    function finder(params) {
+    function finder(db, params) {
         var results = new RarityTable(ion.identity, false);
-        for (var i=0, len = this.models.length; i < len; i++) {
-            var model = this.models[i];
-            if (matchesTags(params.tags, model) && this.matches(params, model)) {
+        for (var i=0, len = db.models.length; i < len; i++) {
+            var model = db.models[i];
+            
+            if (matchesTags(params.tags, model) && db.matches(params, model)) {
                 results.add(model.frequency, model);
             }
         }
@@ -7870,10 +7892,10 @@ ion.models.Store =  ion.define(ion.models.Model, {
     function split(string) {
         return string.trim().toLowerCase().split(/\s+/);
     }
-    function parseTags(arg) {
+    function parseTags(db, arg) {
         var memo = getMemo();
         if (ion.isString(arg) && arg !== "") {
-            memo = split(arg).reduce(this.cbTagCollector, memo);
+            memo = split(arg).reduce(db.cbTagCollector, memo);
         } /*else if (ion.isArray(arg)) {
             // TODO: This makes no sense to me, it's just consuming the first element
             // of the array. Why is this here, why do tests break without it? 
@@ -7882,7 +7904,8 @@ ion.models.Store =  ion.define(ion.models.Model, {
         }*/
         return memo.ands;
     }
-    function tagCollector(memo, tag) {
+    /*
+    function tagCollector(memo, tag) { // the last two arguments are never passed to this method..
         if (tag === "|") {
             var newMemo = getMemo();
             memo.or = newMemo;
@@ -7897,26 +7920,26 @@ ion.models.Store =  ion.define(ion.models.Model, {
             memo.ands.push(tag);
         }
         return memo;
-    }
-    function buildQuery(params, arg) {
+    }*/
+    function buildQuery(db, params, arg) {
         if (ion.isString(arg) && arg !== "") {
-            params = split(arg).reduce(this.cbTagCollector, params);
+            params = split(arg).reduce(db.cbTagCollector, params);
         } else if (ion.isArray(arg)) {
             for (var i=0; i < arg.length; i++) {
-                params = split(arg[i]).reduce(this.cbTagCollector, params);
+                params = split(arg[i]).reduce(db.cbTagCollector, params);
             }
         }
     }
     function makeSearchName(string) {
         return string.replace(REMOVE_BRACES,'').replace(REMOVE_WHITESPACE,'').toLowerCase();
     }
-    function parseQuery() {
-        if (!ion.isUndefined(arguments[0]) && arguments[0].ands) {
-            return arguments[0];
+    function parseQuery(db) {
+        if (!ion.isUndefined(arguments[1]) && arguments[1].ands) {
+            return arguments[1];
         }
         var params = getMemo();
         for (var i=0; i < arguments.length; i++) {
-            buildQuery.call(this, params, arguments[i]);
+            buildQuery(db, params, arguments[i]);
         }
         return params;
     }
@@ -7955,7 +7978,22 @@ ion.models.Store =  ion.define(ion.models.Model, {
         init: function(tags, strategy) {
             this.models = [];
             this.lookupArray = tags || [];
-            this.cbTagCollector = tagCollector.bind(this);
+            this.cbTagCollector = function(memo, tag) { // the last two arguments are never passed to this method..
+                if (tag === "|") {
+                    var newMemo = getMemo();
+                    memo.or = newMemo;
+                    return newMemo;
+                }
+                if (this.lookupArray) {
+                    tag = this.lookupArray[parseInt(tag,10)] || tag;
+                }
+                if (tag.charAt(0) === "-") {
+                    memo.nots.push(tag.substring(1));
+                } else {
+                    memo.ands.push(tag);
+                }
+                return memo;
+            }.bind(this);
         },
         /**
          * @for ion.db.Database
@@ -8006,8 +8044,8 @@ ion.models.Store =  ion.define(ion.models.Model, {
             if (ion.isString(params) || ion.isArray(params)) {
                 params = {tags: params};
             }
-            params.tags = parseQuery.call(this, params.tags);
-            return finder.call(this, params);
+            params.tags = parseQuery(this, params.tags);
+            return finder(this, params);
         }
     });
 
@@ -8091,7 +8129,7 @@ ion.models.Store =  ion.define(ion.models.Model, {
                 var string = arguments[i],
                     parts = string.split('!'),
                     names = parts[0].trim().split(/\s*;\s*/),
-                    tags = parseTags.call(this, parts[3]),
+                    tags = parseTags(this, parts[3]),
                     breakable = tags.indexOf("br") > -1,
                     params = {
                         value: parseFloat(parts[1]),
@@ -8103,7 +8141,7 @@ ion.models.Store =  ion.define(ion.models.Model, {
                     
                     params.tags = ion.without(tags, 'br');
                     params.tags.push(makeSearchName(params.name));
-                    this.models[this.models.length] = new Item(params);
+                    this.models[this.models.length] = Object.freeze(new Item(params));
                 }
                 
                 if (!breakable) { continue; }
@@ -8115,7 +8153,7 @@ ion.models.Store =  ion.define(ion.models.Model, {
                 for (j=0, len2 = names.length; j < len2; j++) {
                     params.name = "broken " + names[j];
                     params.tags = [makeSearchName(params.name)].concat(tags);
-                    this.models[this.models.length] = new Item(params);
+                    this.models[this.models.length] = Object.freeze(new Item(params));
                 }
             }
         }
@@ -8126,15 +8164,18 @@ ion.models.Store =  ion.define(ion.models.Model, {
             ion.db.Database.call(this, params);
         },
         register: function() {
+            var opts, inv;
             for (var i=0, len = arguments.length; i < len; i++) {
                 var parts = arguments[i].split('!'),
                     names = parts[0].trim().split(/\s*;\s*/),
                     policy = parts[1],
                     owner_profession = parts[2],
                     owner_trait = parts[3],
-                    bag_query = parts[4],
-                    bag_total_value = parseInt(parts[5], 10),
-                    tags = parseTags.call(this, parts[6]),
+                    bag_tags = parts[4],
+                    bag_total_value = parts[5],
+                    bag_min_value = parts[6],
+                    bag_max_value = parts[7],
+                    tags = parseTags(this, parts[8]),
                     frequency = tags.shift();
                 
                 // So you can search for a store by name (converted to tags)
@@ -8147,23 +8188,23 @@ ion.models.Store =  ion.define(ion.models.Model, {
                     owner.traits = {};
                     owner.traits[owner_trait] = ion.roll(3)+1;
                 }
-                var inventory = { 
-                    tags: bag_query, 
-                    fillBag: false, 
-                    cluster: getClustering(tags) 
-                };
-                if (!isNaN(bag_total_value)) {
-                    inventory.totalValue = bag_total_value; 
-                }
                 
-                this.models[this.models.length] = {
+                this.models[this.models.length] = opts = {
                     frequency: frequency, 
                     names: names, 
                     policy: policy,
                     owner: owner,
-                    tags: tags,
-                    inventory: inventory
+                    tags: tags
                 };
+
+                // Only if at least one of these was set...
+                if (bag_tags || bag_total_value || bag_min_value || bag_max_value) {
+                    opts.inventory = inv = {fillBag: false, cluster: getClustering(tags)};
+                    if (bag_tags) { inv.tags = bag_tags; }
+                    if (bag_total_value) { inv.totalValue = parseInt(bag_total_value,10); }
+                    if (bag_min_value) { inv.minValue = parseInt(bag_min_value,10); }
+                    if (bag_max_value) { inv.maxValue = parseInt(bag_max_value,10); }
+                }
             }
         }
     });
@@ -8214,14 +8255,14 @@ ion.models.Store =  ion.define(ion.models.Model, {
          * @param function {String} function body of a post-training processing method.
          */        
         register: function() {
-            var clazz = arguments[0];
+            var Clazz = arguments[0];
             
             for (var i=1, len = arguments.length; i < len; i += 2) {
                 var parts = arguments[i].split('!'),
                     names = parts[0].trim().split(/\s*;\s*/),
-                    seeds = parseTags.call(this, parts[1]),
-                    traits = parseTags.call(this, parts[2]),
-                    tags = parseTags.call(this, parts[3]),
+                    seeds = parseTags(this, parts[1]),
+                    traits = parseTags(this, parts[2]),
+                    tags = parseTags(this, parts[3]),
                     freq = tags.shift(),
                     func = arguments[i+1] ? new Function("c", arguments[i+1]) : ion.identity;
                     
@@ -8229,7 +8270,7 @@ ion.models.Store =  ion.define(ion.models.Model, {
                 for (var j=0; j < names.length; j++) {
                     tags[tags.length] = ion.toTag(names[j]);
                 }
-                this.models[this.models.length] = new clazz({
+                this.models[this.models.length] = new Clazz({
                     names: names, tags: tags, seeds: seeds, supplements: traits, postprocess: func, frequency: freq
                 });
             }
@@ -8269,6 +8310,7 @@ var fantasy = {
 };
 
 ion.models.AtomicProfession = (function(ion, Profession) {
+    "use strict";
     
     var navyRanks = ["","Seaman", "Petty Officer", "Ensign", "Lieutenant", "Lieutenant Commander", "Commander", "Captain", "Admiral"],
         policeRanks = ["Officer",["Officer","Trooper"],"Detective","Sergeant", ["Captain","Deputy Marshal"], ["Inspector","Marshal"],["Deputy Chief","Undersheriff"],["Chief","Sheriff"]],
@@ -8320,19 +8362,19 @@ ion.models.AtomicProfession = (function(ion, Profession) {
 
 
 atomic.getPlaces = function() { return ['Agricultural','Automotive','Civic','Criminal','Garage','Hospital','House','Industrial','Institution','Lodging','Military','Office','Public','Research','Restaurant','School','Tourism','Travel']; };
-atomic.getLocations = function() { return ['Encampment', 'Roadside', 'Settlement']; };
+atomic.getLocations = function() { return ['Encampment', 'Roadside', 'Settlement', 'Town']; };
 
-ion.itemDb = new ion.db.ItemDatabase(['ammo','ammo:22','ammo:30','ammo:308','ammo:357','ammo:38','ammo:44','ammo:45','ammo:fusion','ammo:laser','ammo:pulse','ammo:shell','armor','agricultural','automotive','civic','criminal','garage','hospital','house','industrial','institution','lodging','military','office','public','research','restaurant','school','tourism','travel','br','bundled','heavy','nobr','unique','accessories','body','coat','feet','head','con','con:35mm','con:battery','con:polaroid','food','fresh','meat','prepared','preserved','ration','common','rare','uncommon','female','male','alcohol','camping','cash','clothing','communications','container','currency','drug','explosive','jewelry','medical','pottery','sport','tool','toy','kit:courier','kit:craftsperson','kit:doctor','kit:electrician','kit:gunslinger','kit:homesteader','kit:leader','kit:mechanic','kit:miner','kit:personal','kit:police','kit:raider','kit:rancher','kit:scavenger','kit:scientist','kit:settler','kit:soldier','kit:thief','kit:trader','kit:vagrant','hand','huge','large','medium','miniscule','small','tiny','historical','luxury','scifi','secured','useful','firearm','melee','pistol','rifle','shotgun','smg']);
+ion.itemDb = new ion.db.ItemDatabase(['ammo','ammo:22','ammo:30','ammo:308','ammo:357','ammo:38','ammo:44','ammo:45','ammo:fusion','ammo:laser','ammo:pulse','ammo:shell','armor','agricultural','automotive','civic','criminal','garage','hospital','house','industrial','institution','lodging','military','office','public','research','restaurant','school','tourism','travel','br','bundled','heavy','nobr','unique','accessories','body','coat','feet','head','con','con:35mm','con:battery','con:polaroid','food','fresh','meat','prepared','preserved','ration','common','rare','uncommon','female','male','alcohol','camping','cash','clothing','communications','container','currency','drug','explosive','jewelry','medical','pottery','publication','sport','tool','toy','kit:courier','kit:craftsperson','kit:doctor','kit:electrician','kit:gunslinger','kit:homesteader','kit:leader','kit:mechanic','kit:miner','kit:personal','kit:police','kit:raider','kit:rancher','kit:scavenger','kit:scientist','kit:settler','kit:soldier','kit:thief','kit:trader','kit:vagrant','hand','huge','large','medium','miniscule','small','tiny','luxury','scifi','secured','useful','firearm','melee','pistol','rifle','shotgun','smg']);
 ion.itemDb.register(
 "$1 bill!.01!0!51 58 62",  
-"$1 casino chip!.2!0!53 62",  
+"$1 casino chip!1!0!53 62",  
 "$10 bill!.1!0!53 58 62",  
-"$10 casino chip!2!0!53 62",  
+"$10 casino chip!10!0!53 62",  
 "$100 bill!1!0!52 58 62",  
 "$20 bill!.2!0!53 58 62",  
-"$25 casino chip!5!0!52 62",  
+"$25 casino chip!25!0!52 62",  
 "$5 bill!.05!0!51 58 62",  
-"$5 casino chip!1!0!52 62",  
+"$5 casino chip!5!0!52 62",  
 ".22 caliber bullet!1!.5!53 0 1",  
 ".30 caliber bullet!1!.5!53 0 2",  
 ".357 caliber bullet!1!.5!53 0 4",  
@@ -8340,46 +8382,46 @@ ion.itemDb.register(
 ".44 caliber bullet!1!.5!53 0 6",  
 ".45 caliber bullet!1!.5!53 0 7",  
 "American flag!1!3!51 15 21 23 25 28 35",  
-"Boss of the Plains hat!6!.5!52 59 40 77 86 55 25",  
-"Dutch Lad snack cake!6!1!52 45 19 99 49 50",  
+"Boss of the Plains hat!2!.5!52 59 40 78 87 55 25",  
+"Dutch Lad snack cake!6!1!52 45 19 99 49",  
 "Kit-Cat klock; Tiki statue!1!3!53 19 ",  
-"Kooba Kid comic book; Bubbles and Yanks comic book; Volto from Mars comic book; Clutch Cargo comic book!6!.5!52 17 19 80",  
-"M1 Rifle; M1 Carbine!12!10!52 2 31 103 87 106",  
-"M14 Rifle!12!10!52 3 31 103 87 106",  
-"M1911 Pistol!9!3!52 7 31 103 77 87 105",  
-"Remington .44 Magnum Pistol; Smith & Wesson .44 Magnum Pistol; Colt .44 Magnum Pistol!9!3!52 6 31 103 71 75 77 79 81 82 84 86 89 105",  
-"Remington 870 Shotgun; Winchester 1897 Shotgun; Winchester Model 12 Shotgun!9!10!52 11 31 103 17 19 71 79 81 82 84 86 89 107",  
-"Remington Rifle!12!10!52 13 1 31 103 17 19 71 75 76 79 82 83 84 86 89 106",  
-"Ruger .22 Pistol!9!3!52 1 31 103 73 79 85 86 88 89 105",  
-"Ruger Single Six Revolver!9!3!52 1 31 103 71 79 83 84 86 89 90 105",  
-"Smith & Wesson .357 Magnum Pistol; Colt .357 Magnum Pistol!9!3!52 4 31 103 75 77 79 81 82 84 86 88 89 105",  
-"Smith & Wesson .38 Special Revolver; Colt Detective Special Revolver!9!3!52 5 31 103 71 72 73 74 77 78 79 81 84 86 88 89 105",  
-"Smith & Wesson Service Revolver; Colt Service Pistol!9!3!52 7 31 103 71 72 73 74 78 79 81 84 85 86 89 90 105",  
-"Springfield Rifle!12!10!52 2 31 103 71 75 84 87 106",  
-"Thompson Submachine Gun; M3 Submachine Gun; Browning Automatic Rifle!12!10!52 7 31 103 87 108",  
-"Twinkle Cake!3!1!53 45 19 49 50 28 29 30",  
-"Winchester Rifle!12!10!52 13 3 31 103 17 19 71 75 76 79 83 84 86 89 106",  
+"Kooba Kid comic book; Bubbles and Yanks comic book; Volto from Mars comic book; Clutch Cargo comic book!6!.5!52 17 19 81 68",  
+"M1 Rifle; M1 Carbine!12!10!52 2 31 103 88 106",  
+"M14 Rifle!12!10!52 3 31 103 88 106",  
+"M1911 Pistol!9!3!52 7 31 103 78 88 105",  
+"Remington .44 Magnum Pistol; Smith & Wesson .44 Magnum Pistol; Colt .44 Magnum Pistol!9!3!52 6 31 103 72 76 78 80 82 83 85 87 90 105",  
+"Remington 870 Shotgun; Winchester 1897 Shotgun; Winchester Model 12 Shotgun!9!10!52 11 31 103 17 19 72 80 82 83 85 87 90 107",  
+"Remington Rifle!12!10!52 13 1 31 103 17 19 72 76 77 80 83 84 85 87 90 106",  
+"Ruger .22 Pistol!9!3!52 1 31 103 74 80 86 87 89 90 105",  
+"Ruger Single Six Revolver!9!3!52 1 31 103 72 80 84 85 87 90 91 105",  
+"Smith & Wesson .357 Magnum Pistol; Colt .357 Magnum Pistol!9!3!52 4 31 103 76 78 80 82 83 85 87 89 90 105",  
+"Smith & Wesson .38 Special Revolver; Colt Detective Special Revolver!9!3!52 5 31 103 72 73 74 75 78 79 80 82 85 87 89 90 105",  
+"Smith & Wesson Service Revolver; Colt Service Pistol!9!3!52 7 31 103 72 73 74 75 79 80 82 85 86 87 90 91 105",  
+"Springfield Rifle!12!10!52 2 31 103 72 76 85 88 106",  
+"Thompson Submachine Gun; M3 Submachine Gun; Browning Automatic Rifle!12!10!52 7 31 103 88 108",  
+"Twinkle Cake!3!1!53 45 19 49 28 29 30",  
+"Winchester Rifle!12!10!52 13 3 31 103 17 19 72 76 77 80 84 85 87 90 106",  
 "apple pie; cherry pie; peach pie!3!3!53 13 45 46 48 ",  
-"apple; pear; nectarine; orange; peach{es}; plum!1!.5!51 45 46 86",  
+"apple; pear; nectarine; orange; peach{es}; plum!1!.5!51 45 46 87",  
 "ashtray!1!1!51 19",  
-"axe; pickaxe!3!20!53 13 57 17 33 79 104 69",  
-"backpack!11!10!51 61 19 71 84 90 22 23  30 102",  
+"axe; pickaxe!3!20!53 13 57 17 33 80 104 70",  
+"backpack!11!10!51 61 19 72 85 91 22 23  30 102",  
 "bag{s} of sugar!11!3!52 45 19 49 102",  
-"bandana; baseball cap!1!.5!51 59 54 40 19 71 72 74 76 78 79 82 83 84 86 88 90 55",  
-"baseball bat!3!3!51 17 71 76 82 84 88 90 104 68",  
-"baseball; softball; tennis ball!1!1!51 19 25 28  68",  
+"bandana; baseball cap!2!.5!51 59 54 40 19 72 73 75 77 79 80 83 84 85 87 89 91 55",  
+"baseball bat!3!3!51 17 72 77 83 85 89 91 104 69",  
+"baseball; softball; tennis ball!1!1!51 19 25 28  69",  
 "batter{y|ies}!3!.5!53 41 43",  
-"bayonet!3!1!51 87 104",  
-"belt{s} with large silver buckle{s}!3!.5!53 36 59 75 83 55",  
-"beret; boonie hat; garrison cap; patrol cap!1!.5!51 59 54 40 87 55 23",  
-"boater's straw hat; Panama straw hat!3!.5!53 15 59 40 19 73 76 77 85 86 89 90 22 55 25",  
-"bolo tie!1!.5!51 36 59 19 75 83 89 22 55 ",  
-"book!3!3!51 98 28",  
-"book{s} of cattle brands!1!1!51 83 35",  
-"boomerang; bubble gum cigar; frisbee; hula hoop; Hopalong Cassidy cap gun; coonskin cap; slinky!1!3!53 19  70",  
-"bottle{s} of milk!1!3!51 45 46 19 86",  
-"bottle{s} of scotch; bottle{s} of whiskey; bottle{s} of vodka; bottle{s} of wine!13!10!53 56 63 19 80 99",  
-"bowling ball!6!20!52 33 19 25 68",  
+"bayonet!3!1!51 88 104",  
+"belt{s} with large silver buckle{s}!2!.5!53 36 59 76 84 55",  
+"beret; boonie hat; garrison cap; patrol cap!2!.5!51 59 54 40 88 55 23",  
+"boater's straw hat; Panama straw hat!2!.5!53 15 59 40 19 74 77 78 86 87 90 91 22 55 25",  
+"bolo tie!2!.5!51 36 59 19 76 84 90 22 55 ",  
+"book!1!3!51 68 28",  
+"book{s} of cattle brands!1!1!51 84 35",  
+"boomerang; bubble gum cigar; frisbee; hula hoop; Hopalong Cassidy cap gun; coonskin cap; slinky!1!3!53 19  71",  
+"bottle{s} of milk!1!3!51 45 46 19 87",  
+"bottle{s} of scotch; bottle{s} of whiskey; bottle{s} of vodka; bottle{s} of wine!13!10!53 56 63 19 81 99",  
+"bowling ball!6!20!52 33 19 25 69",  
 "box{es} of .22 ammo (20 rounds)!30!3!52 0 1 32",  
 "box{es} of .30 ammo (20 rounds)!30!3!52 0 2 32",  
 "box{es} of .308 ammo (20 rounds)!30!3!52 0 3 32",  
@@ -8390,168 +8432,173 @@ ion.itemDb.register(
 "box{es} of Sugar Jets cereal!3!3!53 45 19 49",  
 "box{es} of Velveteena cheese!6!3!53 45 18 19 99 49 27",  
 "box{es} of candies!9!3!52 19 99",  
-"box{es} of candles!9!3!51 57 17 19 79 84 102",  
+"box{es} of candles!9!3!51 57 17 19 80 85 102",  
 "box{es} of chocolates!6!3!52 45 19 99 49",  
 "box{es} of hardtack!9!3!53 45 23 50 102",  
-"box{es} of matches!3!.5!51 57 16 17 19 80 82 83 84 86 88 69 102",  
+"box{es} of matches!3!.5!51 57 16 17 19 81 83 84 85 87 89 70 102",  
 "box{es} of shotgun shells (20 shells)!30!3!52 0 11 32",  
-"box{|es} of toaster pastries!3!3!53 45 19 49 50",  
+"box{|es} of toaster pastries!3!3!53 45 19 49",  
 "bracelet!10!1!53 65 101",  
 "briefcase!1!10!51 31 15 24 25 26",  
-"bucket hat; coonskin cap!3!.5!53 59 54 40 71 76 82 84 86 89 90 55",  
-"bulletproof vest!11!10!53 12 31 16 81 84 87 102",  
-"business suit!1!3!51 37 59 19 77 86 22 55",  
-"butcher's kni{fe|ves}!3!3!51 19 86 104 27",  
-"camera!3!3!53 31 42 80",  
-"canteen; water bottle!1!3!51 80 23",  
-"can{s} of Brylcreem!3!1!53 19 80",  
+"bucket hat; coonskin cap!2!.5!53 59 54 40 72 77 83 85 87 90 91 55",  
+"bulletproof vest!11!10!53 12 31 16 82 85 88 102",  
+"business suit!2!3!51 37 59 19 78 87 22 55",  
+"butcher's kni{fe|ves}!3!3!51 19 87 104 27",  
+"camera!3!3!53 31 42 81",  
+"canteen; water bottle!1!3!51 81 23",  
+"can{s} of Brylcreem!3!1!53 19 81",  
 "can{s} of Fido dog food!3!3!51 45 19 47 49",  
 "can{s} of Rinso Detergent!1!3!51 19",  
 "can{s} of coffee; jar{s} of instant coffee!6!3!52 45 19 99 49",  
 "can{s} of milk; can{s} of pork & beans; box{es} of crackers; can{s} of wham!3!3!51 45 19 49",  
-"can{|s} of mace; can{|s} of pepper spray!3!1!53 72 73 74 77 78 85 86 88 104",  
+"can{|s} of mace; can{|s} of pepper spray!3!1!53 73 74 75 78 79 86 87 89 104",  
 "carton{s} of cigarettes!150!3!52 63 99",  
-"casualwear outfit!1!3!51 37 59 54 19 86 22 55",  
+"casualwear outfit!2!3!51 37 59 54 19 87 22 55",  
 "ceramic cup; ceramic plate; ceramic bowl; large ceramic bowl; pottery cup; pottery bowl; pottery vase; clay figurine!3!6!53 13 31 33 19 67 29",  
-"cigarette lighter!3!.5!51 16 19 80 86 69 102",  
+"cigarette lighter!3!.5!51 16 19 81 87 70 102",  
 "clipboard!1!3!51 24",  
-"coat; overcoat; parka; windbreaker!1!3!51 13 15 59 38 54 18 19 20 21 76 80 81 22 55 24 25 27 ",  
+"coat; overcoat; parka; windbreaker!2!3!51 13 15 59 38 54 18 19 20 21 77 81 82 22 55 24 25 27 ",  
 "coffee mug!1!1!51 19 24",  
 "coffee pot!1!3!51 19",  
-"coil{s} of rope (50 feet)!3!10!53 13 17  69",  
-"comb; handkerchief!1!.5!51 19 80",  
-"combat helmet!1!.5!51 12 59 54 40 82 84 87 55 23",  
+"coil{s} of rope (50 feet)!3!10!53 13 17  70",  
+"comb; handkerchief!1!.5!51 19 81",  
+"combat helmet!2!.5!51 12 59 54 40 83 85 88 55 23",  
 "compass!6!.5!52 57 17",  
-"cowboy hat!1!.5!51 13 59 54 40 75 83 55",  
-"crowbar; tire iron!3!6!51 17 33 82 84 104 69",  
+"cowboy hat!2!.5!51 13 59 54 40 76 84 55",  
+"crowbar; tire iron!3!6!51 17 33 83 85 104 70",  
 "crutch{es}!3!10!53 66",  
-"dagger!3!1!51 75 82 84 86 87 88 104",  
-"day pack!4!10!51 15 61 19 20 71 72 74 78 79 82 84 86 88 90 22 23 28  30 102",  
+"dagger!3!1!51 76 83 85 87 88 89 104",  
+"day pack!4!10!51 15 61 19 20 72 73 75 79 80 83 85 87 89 91 22 23 28  30 102",  
 "day{s} of C rations!11!6!51 45 33 23 49 50 102",  
 "death ray!27!3!52 8 31 103 105 26 100",  
-"deck{s} of playing cards!6!1!51 16 19 80 102",  
-"denim jacket!1!.5!51 59 38 54 72 74 78 88 90 55",  
-"doctor's bag!1!10!51 36 59 61 54 18 73 55",  
-"duster; buckskin coat; poncho!3!.5!53 13 59 38 54 71 75 82 83 89 55",  
+"deck{s} of playing cards!6!1!51 16 19 81 102",  
+"denim jacket!2!.5!51 59 38 54 73 75 79 89 91 55",  
+"doctor's bag!2!10!51 36 59 61 54 18 74 55",  
+"duster; buckskin coat; poncho!2!.5!53 13 59 38 54 72 76 83 84 90 55",  
 "egg; potato{es}!1!.5!51 45 46",  
-"empty fuel can!1!10!51 14 61 17 20 71",  
-"fedora; flat cap; porkpie hat!1!.5!51 59 40 19 73 77 85 86 89 90 22 55 25  30",  
-"fire axe!3!10!53 14 15 16 18 20 21 72 74 78 79 84 90 104 23",  
+"empty fuel can!1!10!51 14 61 17 20 72",  
+"fedora; flat cap; porkpie hat!2!.5!51 59 40 19 74 78 86 87 90 91 22 55 25  30",  
+"fire axe!3!10!53 14 15 16 18 20 21 73 75 79 80 85 91 104 23",  
 "fire extinguisher!1!15!51 14 15 16 33 18 20 21 22 23 24 25 26 28 30",  
 "first aid kit!13!10!53 66 102",  
-"flashlight!6!1!51 14 31 57 15 43 17 19 20 21 80 26  69 102",  
-"floral dress; jumper{s} with {a |}blouse{s}; jumper{s} with {a |}T-shirt{s}; skirt{s} and blouse{s}; prairie skirt{s} and blouse{s}; shirtwaist dress!1!.5!51 37 59 54 72 73 76 77 85 86 89 90",  
-"football; tennis racket!1!10!51 19 25 28  68",  
+"flashlight!6!1!51 14 31 57 15 43 17 19 20 21 81 26  70 102",  
+"floral dress; jumper{s} with {a |}blouse{s}; jumper{s} with {a |}T-shirt{s}; skirt{s} and blouse{s}; prairie skirt{s} and blouse{s}; shirtwaist dress!2!.5!51 37 59 54 73 74 77 78 86 87 90 91",  
+"football; tennis racket!1!10!51 19 25 28  69",  
 "force field belt!15!1!52 12 31 26 100",  
-"gas mask!1!3!53 12 31 81 87 23",  
-"geiger counter!11!3!53 31 20 79 84 85 87 26 69 102",  
+"gas mask!1!3!53 12 31 82 88 23",  
+"geiger counter!11!3!53 31 20 80 85 86 88 26 70 102",  
 "gold krugerrand!10!1!53 62 33 101",  
 "gravity rifle!36!20!52 8 31 103 33 23 26 106 100",  
-"hand grenade!5!1!53 64 82 84 87 23",  
-"hard hat{s} with lamp{s}; hard hat!3!.5!53 59 54 40 20 79 55",  
-"hockey mask!1!3!53 12 82",  
-"hoe; rake; shovel!3!10!53 13 17 86 104 69",  
-"holster!3!1!53 36 59 54 75 80 87 55 35",  
+"hand grenade!5!1!53 64 83 85 88 23",  
+"hard hat{s} with lamp{s}; hard hat!2!.5!53 59 54 40 20 80 55",  
+"hockey mask!1!3!53 12 83",  
+"hoe; rake; shovel!3!10!53 13 17 87 104 70",  
+"holster!2!1!53 36 59 54 76 81 88 55 35",  
 "house deed!6!1!52 101",  
-"hunting kni{fe|ves}!3!1!51 75 76 77 83 84 86 89 90 104",  
-"ice pick!3!20!53 17 33 104 69",  
-"jar{s} of Ersatz instant coffee!6!3!52 15 45 19 99 24 49 50 30",  
+"hunting kni{fe|ves}!3!1!51 76 77 78 84 85 87 90 91 104",  
+"ice pick!3!20!53 17 33 104 70",  
+"jar{s} of Ersatz instant coffee!6!3!52 15 45 19 99 24 49 30",  
 "jar{s} of Gusto pasta sauce; box{es} of Gusto spaghetti; jar{s} of Gusto olives; box{es} of Gusto bread sticks; can{s} of Gusto ravioli!3!3!51 45 19 49 27",  
 "jar{s} of jam!1!1!51 45 46 19 48 27",  
-"jug{s} of moonshine!10!10!53 13 63 80",  
-"jumpsuit; {|}work coveralls!1!3!51 13 14 37 59 54 20 21 72 74 78 79 84 55",  
+"jug{s} of moonshine!10!10!53 13 63 81",  
+"jumpsuit; {|}work coveralls!2!3!51 13 14 37 59 54 20 21 73 75 79 80 85 55",  
 "knife; fork; spoon!1!1!51 19 27",  
-"lab coat!1!3!51 59 38 54 18 21 73 85 55 26",  
-"lariat!1!3!51 83 35",  
-"laser pistol!27!3!52 9 31 103 85 87 105 26 100",  
-"laser rifle!36!10!52 9 31 103 87 26 106 100",  
-"letter sweater!3!.5!53 59 38 54 86 55",  
-"loa{f|ves} of bread!1!3!51 45 46 86 48",  
-"lockpick set!11!1!52 16 88 69 102",  
+"lab coat!2!3!51 59 38 54 18 21 74 86 55 26",  
+"lamb chop; {|}lamb ribs{|}; lamb roast; {|}lamb spareribs{|}!3!10!53 45 46 47",  
+"lariat!1!3!51 84 35",  
+"laser pistol!27!3!52 9 31 103 86 88 105 26 100",  
+"laser rifle!36!10!52 9 31 103 88 26 106 100",  
+"letter sweater!2!.5!53 59 38 54 87 55",  
+"loa{f|ves} of bread!1!3!51 45 46 87 48",  
+"lockpick set!11!1!52 16 89 70 102",  
 "lunchbox{es}!3!10!53 19",  
-"magazine!3!3!51 98 30",  
+"magazine!1!3!51 68 30",  
 "medical brace!3!10!53 66",  
-"metal detector!6!10!52 31 17 84 23  69 35",  
-"military helmet!9!3!53 12 84 87 102",  
-"motorcycle helmet; football helmet!9!3!53 12 17 82 84 102",  
-"motorcycle jacket!11!3!53 59 38 54 17 71 75 82 84 55 102",  
-"mouse trap!3!1!53 17 19 69",  
+"metal detector!6!10!52 31 17 85 23  70 35",  
+"military helmet!9!3!53 12 85 88 102",  
+"motorcycle helmet; football helmet!9!3!53 12 17 83 85 102",  
+"motorcycle jacket!10!3!53 59 38 54 17 72 76 83 85 55 102",  
+"mouse trap!3!1!53 17 19 70",  
 "necklace!12!1!53 65 101",  
-"newspaper!3!3!51 14 15 16 17 98 18 19 20 21 22 23 24 25 27 29 30",  
-"notebook; journal; sketchbook!6!3!52 14 15 18 19 21 80 23 24 26 28  29 35",  
-"pack{s} of chemical light sticks (5 sticks)!8!1!53 57 17 71 74 78 79 81 84 90  69 102",  
-"pack{s} of chewing gum; pack{s} of Blackjack chewing gum!6!.5!52 45 80 99 49 50 29 30",  
-"pack{s} of cigarettes!13!1!53 63 80 99",  
-"pair{s} of safety goggles!6!1!52 59 54 40 20 85 55 26",  
-"peaked cap; campaign hat!1!.5!51 15 59 54 40 81 55",  
+"newspaper!1!3!51 14 15 16 17 18 19 20 21 22 23 24 25 68 27 29 30",  
+"notebook; journal; sketchbook!6!3!52 14 15 18 19 21 81 23 24 26 28  29 35",  
+"package{s} of hot dogs!3!3!51 45 47 49",  
+"pack{s} of chemical light sticks (5 sticks)!8!1!53 57 17 72 75 79 80 82 85 91  70 102",  
+"pack{s} of chewing gum; pack{s} of Blackjack chewing gum!6!.5!52 45 81 99 49 29 30",  
+"pack{s} of cigarettes!13!1!53 63 81 99",  
+"pair{s} of safety goggles!2!1!52 59 54 40 20 86 55 26",  
+"peaked cap; campaign hat!2!.5!51 15 59 54 40 82 55",  
 "pencil; pen!1!1!51 24 28",  
-"pipe; chain!3!3!53 17 20 82 104",  
-"pitchfork!3!10!53 13 69",  
+"pipe; chain!3!3!53 17 20 83 104",  
+"pitchfork!3!10!53 13 70",  
 "plastic cup; glass!1!3!51 31 19 27 28 ",  
 "plate!1!3!51 19 27",  
-"polaroid camera!3!3!53 31 15 44 19 21 80 22 25 26  29 30",  
-"police baton; nightstick!3!3!53 81 104",  
-"police uniform!1!3!51 37 15 59 54 81 55",  
+"polaroid camera!3!3!53 31 15 44 19 21 81 22 25 26  29 30",  
+"police baton; nightstick!3!3!53 82 104",  
+"police uniform!2!3!51 37 15 59 54 82 55",  
 "pool table!24!80!52 33 19 102",  
-"portable stove!3!3!53 31 57 17 71 84 89 90 68",  
-"portable water purification filter!14!3!52 31  69 102",  
+"pork chop; {|}pork ribs{|}; pork roast; {|}pork spareribs{|}; pork loin chop{|s}; pork sausage!3!10!51 45 46 47",  
+"portable stove!3!3!53 31 57 17 72 85 90 91 69",  
+"portable water purification filter!14!3!52 31  70 102",  
 "pressure cooker; hot plate!6!10!52 31 19",  
-"pulse pistol!27!6!52 10 31 103 33 85 87 105 26 100",  
-"pulse rifle!36!20!52 10 31 103 33 87 26 106 100",  
+"pulse pistol!27!6!52 10 31 103 33 86 88 105 26 100",  
+"pulse rifle!36!20!52 10 31 103 33 88 26 106 100",  
 "purse; handbag!1!3!51 15 61 19 22 24 25 30",  
-"rabbit's {foot|feet}; {|pairs of }Starlight Casino dice; deck{s} of Elvis Presley playing cards; poker chip{s} from the Sands Casino in Reno; Gideon's bible; pocket crucifix; St. Jude pendant; St. Christopher figurine; Star of David necklace; {|pairs of }Masonic cufflinks; Order of Odd Fellows tie clip; class ring!3!.5!53 80 35",  
-"radiation suit!13!10!53 31 59 38 54 20 79 84 87 55 26 102",  
-"red Gingham dress; blue Gingham dress; yellow Gingham dress; green Gingham dress; black and white Gingham dress!1!.5!51 37 59 54 72 73 76 77 85 86 89 90",  
-"rifle scope!8!1!53 13 31 19 83 86 102",  
+"rabbit's {foot|feet}; {|pairs of }Starlight Casino dice; deck{s} of Elvis Presley playing cards; poker chip{s} from the Sands Casino in Reno; Gideon's bible; pocket crucifix; St. Jude pendant; St. Christopher figurine; Star of David necklace; {|pairs of }Masonic cufflinks; Order of Odd Fellows tie clip; class ring!3!.5!53 81 35",  
+"radiation suit!12!10!53 31 59 38 54 20 80 85 88 55 26 102",  
+"red Gingham dress; blue Gingham dress; yellow Gingham dress; green Gingham dress; black and white Gingham dress!2!.5!51 37 59 54 73 74 77 78 86 87 90 91",  
+"rifle scope!8!1!53 13 31 19 84 87 102",  
 "ring!7!.5!53 65 101",  
-"road map!1!1!51 14 17 71 75 84 89 90 22 30",  
+"road map!1!1!51 14 17 72 76 85 90 91 22 30",  
 "roll{s} of 35mm film (24 shots)!6!.5!52 41 42",  
 "roll{s} of polaroid film (10 shots)!3!1!53 41 44",  
-"safe-cracking kit!20!20!52 31 15 16 84 88 69 102",  
-"scalpel!1!1!51 66 69",  
+"safe-cracking kit!20!20!52 31 15 16 85 89 70 102",  
+"scalpel!1!1!51 66 70",  
 "set{s} of horse tack!1!20!51 13",  
 "set{|s} of keys!1!.5!51 14 15 19 20 21 22 23 24 26 28 35",  
-"shawl!3!.5!53 13 59 38 54 19 73 76 77 86 89 90",  
-"shiv; switchblade!3!1!51 16 82 84 88 104",  
+"shawl!2!.5!53 13 59 38 54 19 74 77 78 87 90 91",  
+"shiv; switchblade!3!1!51 16 83 85 89 104",  
 "shotgun shell!1!.5!53 0 11",  
 "slab{s} of bacon!3!1!51 45 19 47 49",  
-"sleeping bag; tent!1!10!51 57 17 71 84 90",  
-"sombrero!6!.5!52 13 59 40 75 83 90 55",  
-"stick{s} of beef jerky!3!1!51 45 19 47 49 50",  
-"stick{s} of dynamite!3!1!53 64 20 79",  
-"straw sun hat!3!.5!53 15 59 54 40 19 73 76 77 85 86 89 90 22 25",  
-"stun baton!11!3!52 81 87 104 102",  
-"suit{|s} of riot gear!15!20!53 12 31 15 16 81 84 23 102",  
-"sword; machete!3!3!52 71 86 87 104",  
+"sleeping bag; tent!1!10!51 57 17 72 85 91",  
+"sombrero!2!.5!52 13 59 40 76 84 91 55",  
+"stick{s} of beef jerky!3!1!51 45 19 47 49",  
+"stick{s} of dynamite!3!1!53 64 20 80",  
+"straw sun hat!2!.5!53 15 59 54 40 19 74 77 78 86 87 90 91 22 25",  
+"stun baton!11!3!52 82 88 104 102",  
+"suit{|s} of riot gear!15!20!53 12 31 15 16 82 85 23 102",  
+"sword; machete!3!3!52 72 87 88 104",  
 "tabletop radio!1!10!51 14 31 15 60 17 19 21 23 ",  
-"teargas grenade!3!1!53 15 64 81",  
-"thermos!11!3!53 57 17 19 83 84 102",  
+"teargas grenade!3!1!53 15 64 82",  
+"thermos!11!3!53 57 17 19 84 85 102",  
 "toaster!1!10!51 31 19",  
-"toy robot!6!3!52 31 43 19 70",  
-"trenchcoat; sports jacket!3!.5!53 59 38 77 55",  
-"walkie-talkie!6!3!52 31 15 60 20 21 77 81 84 87 23 26",  
-"wanted poster!3!.5!53 71 75 81",  
+"toy robot!6!3!52 31 43 19 71",  
+"trenchcoat; sports jacket!2!.5!53 59 38 78 55",  
+"walkie-talkie!6!3!52 31 15 60 20 21 78 82 85 88 23 26",  
+"wanted poster!3!.5!53 72 76 82",  
+"whole chicken!3!10!51 45 46 47",  
 "will; contract; war bond; passport!1!1!51 101",  
-"wrench{es}; hammer!1!3!51 14 17 20 72 78 84  69",  
-"{|pairs of }Mary Jane shoes!1!.5!51 15 59 39 54 19 21 72 73 77 85 86 88 89 90 23",  
-"{|pairs of }black leather shoes!1!.5!51 15 59 39 54 19 21 71 72 73 74 77 78 81 85 86 87 88 89 90 55 23",  
-"{|pairs of }blue suede loafers; {|pairs of }saddle shoes!3!.5!53 59 39 54 86 55",  
-"{|pairs of }chaps!1!.5!51 36 13 59 54 83 55",  
-"{|pairs of }combat boots!1!.5!51 12 59 39 54 71 75 81 82 84 87 90 55 23",  
-"{|pairs of }cowboy boots!1!.5!51 59 39 54 19 71 75 76 77 78 79 82 83 84 86 88 89 90 22 55 ",  
-"{|pairs of }dice!3!.5!51 16 19 80 35 102",  
-"{|pairs of }dog tags!1!.5!51 87 23 35",  
-"{|pairs of }forceps!3!3!53 66 69",  
-"{|pairs of }military fatigues!1!3!51 37 59 54 84 87 55 23",  
-"{|pairs of }night vision goggles!14!3!52 36 31 59 43 54 81 84 87 55 23 102",  
-"{|pairs of }slacks {and a|with} button up shirt{s}!1!.5!51 37 59 19 72 73 85 86 89 90 55",  
-"{|pairs of }work boots!1!.5!51 12 59 39 54 71 75 76 79 81 82 84 86 88 90 55 23",  
-"{|sets of }football pads!11!10!53 12 17 82 84 102",  
-"{|suits of }makeshift metal armor!15!20!52 12 31 16 82 84 102",  
-"{|}binoculars!11!3!53 31 19 71 84 87 102",  
-"{|}bongos; flute!3!3!53 90 35",  
-"{|}brass knuckles!3!1!52 16 82 104",  
-"{|}jeans and a T-shirt; {|}jeans and a button up work shirt; {|}jeans and a flannel shirt; {|}jeans and a western shirt!1!.5!51 37 59 54 19 71 72 74 75 76 78 82 83 84 86 88 89 90 55" 
+"wrench{es}; hammer!1!3!51 14 17 20 73 79 85  70",  
+"{|pairs of }Mary Jane shoes!2!.5!51 15 59 39 54 19 21 73 74 78 86 87 89 90 91 23",  
+"{|pairs of }black leather shoes!2!.5!51 15 59 39 54 19 21 72 73 74 75 78 79 82 86 87 88 89 90 91 55 23",  
+"{|pairs of }blue suede loafers; {|pairs of }saddle shoes!2!.5!53 59 39 54 87 55",  
+"{|pairs of }chaps!2!.5!51 36 13 59 54 84 55",  
+"{|pairs of }combat boots!2!.5!51 12 59 39 54 72 76 82 83 85 88 91 55 23",  
+"{|pairs of }cowboy boots!2!.5!51 59 39 54 19 72 76 77 78 79 80 83 84 85 87 89 90 91 22 55 ",  
+"{|pairs of }dice!3!.5!51 16 19 81 35 102",  
+"{|pairs of }dog tags!1!.5!51 88 23 35",  
+"{|pairs of }forceps!3!3!53 66 70",  
+"{|pairs of }military fatigues!2!3!51 37 59 54 85 88 55 23",  
+"{|pairs of }night vision goggles!10!3!52 36 31 59 43 54 82 85 88 55 23 102",  
+"{|pairs of }slacks {and a|with} button up shirt{s}!2!.5!51 37 59 19 73 74 86 87 90 91 55",  
+"{|pairs of }work boots!2!.5!51 12 59 39 54 72 76 77 80 82 83 85 87 89 91 55 23",  
+"{|sets of }football pads!11!10!53 12 17 83 85 102",  
+"{|suits of }makeshift metal armor!15!20!52 12 31 16 83 85 102",  
+"{|}beef brisket{|s}; beek flank steak{|s}; beef sirloin steak; beef prime rib; beef pot roast; beef rib roast; beef T-Bone steak!3!10!51 45 46 47",  
+"{|}binoculars!11!3!53 31 19 72 85 88 102",  
+"{|}bongos; flute!3!3!53 91 35",  
+"{|}brass knuckles!3!1!52 16 83 104",  
+"{|}jeans and a T-shirt; {|}jeans and a button up work shirt; {|}jeans and a flannel shirt; {|}jeans and a western shirt!2!.5!51 37 59 54 19 72 73 75 76 77 79 83 84 85 87 89 90 91 55" 
 );
 
 ion.profDb = new ion.db.ProfessionDatabase(['post','pre','glasses','injuries','military:tattoo','sailor:tattoo','tattoo','high','low','normal','common','rare','uncommon','kit:courier','kit:craftsperson','kit:doctor','kit:electrician','kit:gunslinger','kit:homesteader','kit:leader','kit:mechanic','kit:miner','kit:police','kit:raider','kit:rancher','kit:scavenger','kit:scientist','kit:settler','kit:soldier','kit:thief','kit:trader','kit:vagrant','innate','Agile','Attractive','Cunning','Persuasive','Smart','Strong','Tough','Willpower','Art','Athletics','Bargain','Business','Camouflage','Electrical Repair','Foraging','Forensics','Government','Homesteading','Horseback Riding','Humanities','Law','Maritime','Mathematics','Mechanical Repair','Medicine','Mining','Negotiate','Observation','Research','Scavenging','Spelunking','Tracking','Wayfinding','Archery','Explosives','Firearms','Melee Weapons','Military','Unarmed Combat','Blacksmith','Brewer','Cook','Glassblower','Leatherworker','Potter','Weaver','Woodworker','Chemical Engineering','Civil Engineering','Eletrical Engineering','Mechanical Engineering','Mining Engineering','Nuclear Engineering','Chinese','French','German','Italian','Russian','Spanish','Biology','Chemistry','Geology','Physics','Science','Social Science','Deceive','Forgery','Intimidate','Lockpicking','Pickpocket','Safe Cracking','Stealth','Streetwise','Communications','Computers','Cryptography','Programming','Robotics','Rocketry','Butcher','Carpenter','Clothier','Gunsmith','Machinist','Mason','Plumber','Wagonwright','Driving','Motorcycling','Pilot Aircraft','Trucking']);
@@ -8589,18 +8636,29 @@ ion.profDb.register(ion.models.AtomicProfession,
 "Tradesperson!43!44 112 113 114 115 116 117 118 119!10 14 9 0", "" 
 );
 
-ion.storeDb = new ion.db.StoreDatabase(['cluster:low', 'cluster:medium', 'cluster:none', 'common', 'rare', 'uncommon', 'encampment', 'roadside', 'settlement']);
+ion.storeDb = new ion.db.StoreDatabase(['cluster:low', 'cluster:medium', 'cluster:none', 'common', 'rare', 'uncommon', 'encampment', 'roadside', 'settlement', 'town', 'trade:any', 'trade:buylow', 'trade:currency', 'trade:luxuries', 'trade:necessities', 'trade:sellhigh', 'trade:stocked']);
 ion.storeDb.register(
-"Bar; Tavern; Saloon!By the glass, or some bottles for purchase:!trader!!alcohol -bottleofwine!50!3 2 3 8", 
-"Biker Shop!Don't mess with the proprietors.!Biker Gang!!kit:raider | weapon | ammo | drug!100!4 0 4 7", 
-"Diner; Cafe; Restaurant; Drive-Thru!A hot meal for 4T, some food for sale:!trader!!prepared food!!4 0 4 7", 
-"Diner; Cafe; Restaurant; Eatery!A hot meal for 3T{.|, prefers casino chips.|, prefers currency.|, only accepts currency.}!trader!!prepared food!!3 0 3 8", 
-"Mart; Market; Shop; Store!!trader!!food!!3 0 3 6 8", 
-"Pottery Shop!!tradesperson!Potter!-br pottery!100!5 0 8 5", 
-"Sporting Goods Store!!trader!!sport | camping!!4 1 4 7 8"
+"Bar; Tavern; Saloon!May have bottles to purchase.!trader!!alcohol -bottleofwine!50!!!3 2 3 8 12", 
+"Biker Shop!!Biker Gang!!kit:raider | weapon | ammo | drug!100!!!4 0 4 7 10 11", 
+"Bookstore!!trader!!publication!100!!!5 2 8 11 12 14 16 5", 
+"Butcher Shop; Meat Market!!trader!Butcher!meat -canoffidodogfood -preserved!100!!!5 0 8 12 13 14 15 5", 
+"Clothing Store; Outfitters; Mercantile!!trader!!clothing -military -industrial!100!!!3 0 3 6 8 11 12 14 16", 
+"Diner; Cafe; Restaurant; Drive-Thru!A hot meal for 4T.!trader!!prepared food!!!!4 2 4 7 12", 
+"Diner; Cafe; Restaurant; Eatery; Luncheonette!A hot meal for 3T.!trader!!prepared food!!!!3 2 3 8 9 12", 
+"Feed Store!Bags of feed for 4T.!trader!!!!!!3 3 7 8 10 11", 
+"General Store; Mercantile; Trading Post!!trader!!-kit:personal -publication -military -food -firearm -ammo -research -br!50!3!!3 2 3 8 10 11", 
+"Gunsmith; Gun Shop; Firearms; Shooting Range!!trader!Gunsmith!firearm -br!30!!10!5 2 8 12 13 14 15 16 5", 
+"Hardware Store!!tradesperson!Mechanical Repair!tool | toy | camping!50!1!20!5 1 7 8 9 12 14 16 5", 
+"Liquor Store!!trader!!alcohol!100!!!4 2 6 4 7 8 12", 
+"Mart; Market; Shop; Store!!trader!!food -ration!100!!!3 0 3 6 8 11 12 14", 
+"Pawn Shop; Antique Store!!trader!!-food -rare -ammo -weapon -luxury -scifi!50!3!!3 4 2 3 4 8 10 15", 
+"Pottery Shop!!tradesperson!Potter!-br pottery!100!!!5 0 8 12 14 5", 
+"Sporting Goods Store!!trader!!sport | camping!!!!4 1 4 7 8 10 11", 
+"Tattoo Parlor; Tattoos!3-5T for a tattoo.!trader!Art!!!!!5 8 12 13 14 5"
 );
 (function(atomic, ion, db, Bag, IonSet) {
-
+    "use strict";
+    
     var containers = {
         "Safe": {
             desc: ["Safecracking+1", "Safecracking", "Safecracking-1", "Safecracking-2", "Safecracking-3", "Safecracking-4"],
@@ -8640,10 +8698,10 @@ ion.storeDb.register(
         "Cash On Hand": {
             desc: ["under the counter", "in a lockbox"],
             query: {
-                totalValue: "5d5",
-                tags: "currency", 
+                totalValue: "20+4d6",
+                tags: "currency -cash | currency", 
                 fillBag: true,
-                maxValue:5
+                maxValue: 7
             }
         },
         "Clothes Closet": {
@@ -8683,17 +8741,28 @@ ion.storeDb.register(
         }
         return bag;
     }
-    function cluster(value) {
+    function getClusterSpread(value) {
         switch(value) {
         case "low":
-            return ion.roll("1d3*2");
+            return ion.roll("2d3+5"); // 7-11
         case "medium":
-            return ion.roll("2d3*4");
+            return ion.roll("2d3+2"); // 4-8
         case "high":
-            return ion.roll("3d3*5");
+            return ion.roll("1d3+2"); // 3-5
+        }
+    }
+    function getClusterCount(value) {
+        switch(value) {
+        case "low":
+            return ion.roll("1d3*2"); // 2-6
+        case "medium":
+            return ion.roll("(1d3*2)+2"); // 3-8
+        case "high":
+            return ion.roll("(1d3*2)+4"); // 6-10
         }
     }
     // Try and create duplicates on purpose
+    /*
     function stockpile(bag, opts) {
         var bagValue = opts.totalValue;
         while (bagValue > 0) {
@@ -8714,6 +8783,7 @@ ion.storeDb.register(
         }
         return bag;
     }
+    */
     function fillCurrency(bag, amount) {
         if (amount > 0) {
             var currencies = db.findAll({tags: 'currency', maxValue: amount});
@@ -8894,10 +8964,39 @@ ion.storeDb.register(
      *          the stockpile will be worth less than this. Must be at least 20.
      */
     atomic.createStockpile = function(params) {
+        // A very different approach where a lot of the values wouldn't even matter.
         params = createParams(params); 
         params.cluster = params.cluster || "medium";
         params.fillBag = false;
-        // Have to have at least 20 for totalValue
+
+        if (params.cluster === "none") {
+            return atomic.createBag(params);
+        }
+
+        var bag = new ion.models.Bag();
+        var count = getClusterSpread(params.cluster);
+        var tags = "-currency ".concat(params.tags);
+
+        kitUniques(bag, count, params.tags);
+
+        bag.entries.forEach(function(entry) {
+            count = getClusterCount(params.cluster);
+            bag.add(entry.item, count);
+        });
+        return bag;
+    };
+    /*
+    atomic.createStockpile2 = function(params) {
+        params = createParams(params); 
+        params.cluster = params.cluster || "medium";
+        params.fillBag = false;
+        
+        if (params.cluster === "none") {
+            console.log("Creating a bag because theere's no clustering");
+            return atomic.createBag(params);
+        }
+        
+        // Have to have at least 100 for totalValue
         if (params.totalValue < 20) {
             params.totalValue = 20;
         }
@@ -8907,7 +9006,7 @@ ion.storeDb.register(
         } while(bag.count() === 0 && i++ < 50);
         return bag;
     };
-    
+    */
     /**
      * Create a bag with additional properties (representing a container of some kind, like a 
      * lockbox or safe).
@@ -8951,6 +9050,7 @@ ion.storeDb.register(
     
 })(atomic, ion, ion.itemDb, ion.models.Bag, ion.models.IonSet);
 (function(atomic, ion) {
+    "use strict";
     
     var names = {
         "anglo male" : [ "Al", "Andy", "Arnie", "Art", "Austin", "Bart", "Beau", "Ben", "Bert", "Bob", "Brad",
@@ -8964,7 +9064,7 @@ ion.storeDb.register(
                 "Ray", "Reed", "Rex", "Rick", "Rod", "Rodger", "Roy", "Russell", "Sam", "Scott", "Slim", "Stan",
                 "Stratton", "Ted", "Tim", "Todd", "Tony", "Travis", "Tyler", "Vern", "Wade", "Wally", "Ward", "Wesley",
                 "Will", "Wyatt" ],
-        "anglo female" : [ "Ada", "Agnes", "Alice", "Amy", "Ann", "Audrey", "Barb", "Becky", "Betty", "Bev", "Carol",
+        "anglo female" : [ "Ada", "Agnes", "Alice", "Amy", "Ann", "Au{b|d}rey", "Barb", "Becky", "Betty", "Bev", "Carol",
                 "Cindy", "Clara", "Darla", "Diane", "Dona", "Doris", "Edith", "Edna", "Eileen", "Ella", "Ellen",
                 "Emma", "Emily", "Erma", "Esther", "Ethel", "Eva", "Fay", "Flo", "Flora", "Gail", "Grace", "Gwen",
                 "Hazel", "Helen", "Holly", "Ida", "Ilene", "Irene", "Iris", "Irma", "Jan", "Jane", "Janet", "Janis",
@@ -9000,7 +9100,7 @@ ion.storeDb.register(
                 "Vargas", "Vasquez", "Velasquez", "Velez", "Villarreal", "Zamora" ]
     };
     function getGivenName(gender, race) {
-        return ion.random(names[ion.format((race === "hispanic" && ion.test(35)) ? "anglo {0}" : "{1} {0}", gender, race)]);
+        return ion.random(ion.random(names[ion.format((race === "hispanic" && ion.test(35)) ? "anglo {0}" : "{1} {0}", gender, race)]));
     }
     function getFamilyName(race) {
         return ion.random(names[race]);
@@ -9044,7 +9144,8 @@ ion.storeDb.register(
 })(atomic, ion);
 
 (function(atomic, ion, Table, RarityTable) {
-
+    "use strict";
+    
     // Not thrilled with these, just because they're not easily role-played.
     // TODO: Multiple tattoos, adjectives, etc.
     /*
@@ -9311,7 +9412,8 @@ ion.storeDb.register(
 })(atomic, ion, ion.tables.Table, ion.tables.RarityTable);
 
 (function(atomic, ion, db, Name, Table, Character, IonSet) {
-
+    "use strict";
+    
     var innate = db.find('innate'),
         histories = ["Before the collapse, was {0}", "Was {0} up until the war", "Was {0} before the war"];
     
@@ -9500,6 +9602,8 @@ ion.storeDb.register(
     Names for military patrols
  */
 (function(atomic, ion, db, Gang) {
+    "use strict";
+    
     var types = {
         'Biker Gang': {
             prof: "raider",
@@ -9627,8 +9731,9 @@ ion.storeDb.register(
      */
     atomic.assignNickname = function(character) {
         var nicks = getNicks(character);
-        character.name.nickname = ion.format(ion.random(ion.random(nicks)), character.name);
-        return character.name.nickame;
+        var nick = ion.random(ion.random(nicks));
+        character.name.nickname = ion.format(nick, character.name);
+        return nick;
     };
     
     /** 
@@ -9697,7 +9802,8 @@ ion.storeDb.register(
 })(atomic, ion, ion.profDb, ion.models.Gang);
 
 (function(atomic, ion) {
-
+    "use strict";
+    
     // This needs to be stubbed-out because encounters depend on location and I want to pull that 
     // out of the metadata, and there's a lot of metadata. I think this could come out of kibble. 
     
@@ -9722,6 +9828,7 @@ ion.storeDb.register(
 
 })(atomic, ion);
 (function(atomic, ion) {
+    "use strict";
     
     // TODO: What are the stats for an encounter?
     // TODO: What encounters occur in what general areas? How often?
@@ -9780,7 +9887,8 @@ ion.storeDb.register(
     
 })(atomic, ion);
 (function(atomic, ion, RarityTable) {
-
+    "use strict";
+    
     function regionByLocation(location) {
         return ion.select( (location === "River" && ion.test(100)) ? water_regional : regional );
     }
@@ -9892,6 +10000,7 @@ ion.storeDb.register(
 })(atomic, ion, ion.tables.RarityTable);
 
 (function(atomic, ion, Weather) {
+    "use strict";
     
     // From: http://biology.fullerton.edu/dsc/school/climate.html
     // Which is enough to fake it, I think.
@@ -9904,7 +10013,7 @@ ion.storeDb.register(
     // 1 - rain
     // 2 - thunderstorms
 
-    averages = [
+    var averages = [
         {lo: 34, hi: 61,  mn: 48, rain: 1}, // Jan
         {lo: 40, hi: 69,  mn: 54, rain: 1},
         {lo: 46, hi: 74,  mn: 60, rain: 1}, // Mar
@@ -9918,7 +10027,7 @@ ion.storeDb.register(
         {lo: 43, hi: 73,  mn: 57, rain: 1}, // Nov
         {lo: 34, hi: 62,  mn: 48, rain: 1}
     ];
-    months = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+    var months = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
 
     /**
      * Weather generator. The weather is based on the Mojave desert so it is hot, sunny and pretty 
@@ -9955,7 +10064,8 @@ ion.storeDb.register(
 })(atomic, ion, ion.models.Weather);
 
 (function(atomic, ion, Table) {
-
+    "use strict";
+    
     var e1 = "{Alpha|American|North American|National|General|Universal|International|Consolidated|Central|Western|Eastern|Union}",
         e2 = "{Micro|Radiation|Nuclear|Atomic|Radium|Uranium|Plutonium|Development|X-Ray|Gamma Ray}",
         e3 = "{Engineering|Research|Scientific|Electronics|Instruments|Devices}",
@@ -10016,35 +10126,30 @@ ion.storeDb.register(
 })(atomic, ion, ion.tables.Table);
 
 (function(atomic, ion, Store, Table, Name) {
-     
+    "use strict"; 
+    
     /* Merchant types (should be merchant, not shop/store):
+     * 
+     * http://www.tottenvillememories.net/businessess1950s.htm
      * 
      * bar/tavern/saloon
      * diner
      * food market
      * bathhouse
-     * bookstore
      * stables
-     * repair shop (electrical items)
-     * repair shop (mechanical items)
+     * repair shop (electrical items); electric shop
+     * repair shop (mechanical items); service station
      * general store
-     * pawn shop
-     * butcher
-     * gunsmith
      * locksmith/blacksmith
      * barbor
-     * tattoo parlor
      * brewery/distillery/vineyard
-     * liquor store
      * baker
      * icehouse
-     * feed store
      * livestock
      * leather store (leatherworker)
      * glassware
-     * pottery
      * weaving
-     * clothing store
+     * pharmacy
      * furniture/woodworking
      *  - sporting goods store (ammo, camping)
      * biker shop/head shop
@@ -10060,15 +10165,6 @@ ion.storeDb.register(
      *      Forty-Rod, Tarantula Juice, Taos Lightning, and Coffin Varnish
      *      Saloons: Bull's Head, Holy Moses
      *      
-     * Owner:
-     * ["gang", "Biker Gang"] or
-     * ["character", {profession: "trader", traits: {"pottery":4}] - also include relationships
-     * etc.
-     * 
-     * Frequency:
-     * - C/U/R, a very blunt instrument but it's been OK so far
-     *      size, frequency and location are interrelated somehow
-     * 
      * Location:
      * - roadside, camp, settlement, military, market (open air, e.g. fairgrounds)
      * 
@@ -10079,29 +10175,31 @@ ion.storeDb.register(
      * - building (tent, cabin, building)
      * - warehouse (warehouse, depot, building)
      * 
-     * Sells: description of what is sold. Not everything that is sold is useful or in the 
-     *  inventory that would be generated, if any. e.g. "pottery cart (pots 2 TU each)".
-     *   
      * Buys: anything interesting about what the establishment will buy or trade for, and 
      * at what price
-     * 
-     * Inventory: actually useful stuff for sale with trade units, a bag spec, e.g.
-     * {totalValue: <sizeBased>, query: "food | ammo", fillBag: false} - always false.
      * 
      * TESTS
      *  - can't submit "Cash On Hand" as a type.
      *  - can submit another type.
+     *  - settlement: ["General Store", "Shop", "Store", "Market", "Mercantile", "Trading Post"]
      */
-    /*
-    var kinds = {
-        settlement: ["General Store", "Shop", "Store", "Market", "Mercantile", "Trading Post"]
+    
+    // trade:sellhigh - sells higher than normal price
+    // trade:buylow - buys lower than normal prices
+    
+    var policies = {
+        "trade:any": ["anything"],
+        "trade:necessities": ["food", "ammo", "medicine"],
+        "trade:luxuries": ["liquor", "pre-collapse junk food", "cigarettes"],
+        "trade:currency": ["greenbacks", "casino chips", "gold and silver"],
+        "trade:stocked": ["any item that would be stocked at this store"]
     };
-    */
+    var markup = [0.2, 0.33, 0.4];
     
     // The size of the shop matters here. For small shops, you might just use the 
     // merchant's first name. And the kind name would no longer be random like this.
     var nameStrategies = new Table();
-    nameStrategies.add(50, function(ownerName, placeName, nameString) {
+    nameStrategies.add(40, function(ownerName, placeName, nameString) {
         return placeName + " " + ion.random(nameString);
     });
     nameStrategies.add(25, function(ownerName, placeName, nameString) { // possessive
@@ -10110,8 +10208,13 @@ ion.storeDb.register(
     });
     nameStrategies.add(25, function(ownerName, placeName, nameString) {
         var biz = ion.random(nameString);
-        //while (biz === "Shop")  { biz = ion.random(nameString); }
+        if (ion.test(40)) {
+            ownerName = "The " + ownerName;
+        }
         return ownerName + " " + biz; 
+    });
+    nameStrategies.add(10, function(ownerName, placeName, nameString) {
+        return ion.random("{Northern|Central|Southern|Western} ") + nameString;
     });
     
     var ownerStrategies = new Table();
@@ -10129,7 +10232,6 @@ ion.storeDb.register(
         atomic.assignNickname(c);
         return c;
     });
-    
     
     /**
      * Create a merchant. Note that there are many parameter options, some mutually 
@@ -10171,40 +10273,55 @@ ion.storeDb.register(
         } else if (owner.kind) {
             ownerName = owner.kind;
         } else if (owner.older) {
-            ownerName = owner.older.name.family;
+            ownerName = owner.older.name;
         } else {
             throw new Error("Could not determine an owner name for this type", config);
         }
-        
+        if (ownerName instanceof ion.models.Name && ion.test(70)) {
+            console.log("Last name only");
+            ownerName = ownerName.family;
+        }
+
         var name = params.name;
         if (!name) {
             var placeName = params.placeName || atomic.createPlaceName();
             name = nameStrategies.get()(ownerName, placeName, ion.select(config.names));
         }
-        var inventory;
-        if (config.inventory) {
-            if (config.inventory.cluster === "none") {
-                inventory = atomic.createBag(config.inventory);
-            } else {
-                inventory = atomic.createStockpile(config.inventory);
-            }
-        } else {
-            inventory = new ion.models.Bag();
-        }
+        
+        var inventory = (config.inventory) ? 
+                atomic.createStockpile(config.inventory) : new ion.models.Bag();
         var onhand = atomic.createContainer("Cash On Hand");
 
+        if (config.tags.indexOf("trade:sellhigh")) {
+            inventory.entries.forEach(function(entry) {
+                var value = entry.item.value;
+                entry.item = entry.item.clone(false);
+                entry.item.value = Math.round(value + (value*ion.random(markup)));
+            });
+        }
+        
+        var array = [];
+        config.tags.forEach(function(tag) {
+            if (policies[tag]) {
+                array = array.concat(policies[tag]);
+            }
+        });
+        
+        var list = (config.policy) ? [config.policy] : [];
+        list.push("Will trade for " + ion.toList(array, ion.identity, "or") + ".");
+        if (config.tags.indexOf("trade:buylow")) {
+            list.push("Unless receiving currency, this merchant buys low (half value).");
+        }
+        
         return new Store({
-            name: name,
-            policy: config.policy ? ion.random(config.policy) : null,
-            owner: owner,
-            onhand: onhand,
-            inventory: inventory
+            name: name, policy: list.join(' '), owner: owner, onhand: onhand, inventory: inventory
         });
     };
 
 })(atomic, ion, ion.models.Store, ion.tables.Table, ion.models.Name);
 (function(atomic, ion, db, Family, RarityTable) {
-
+    "use strict";
+    
     // This creates pretty normal families. As always, the generators are for on-the-spot
     // filler material, and aim for believability. Make up the more unusual families in 
     // your world.
@@ -10380,7 +10497,7 @@ ion.storeDb.register(
             // This *almost* works but the aging of family members proceeds through everyone, 
             // it doesn't branch for kin lines that co-exist in time. Need a different way 
             // to age people.
-            parents = [parent]; // maybeFindOtherParents(family, parent);
+            var parents = [parent]; // maybeFindOtherParents(family, parent);
             parents.forEach(function(p) {
                 var newFamily = makeFamily(p, kin);
                 family.couples.push(newFamily);
@@ -10505,6 +10622,55 @@ ion.storeDb.register(
     
 })(atomic, ion, ion.profDb, ion.models.Family, ion.tables.RarityTable);
 
+(function(ion, atomic) {
+    "use strict";
+    
+    var range = 3, padding = 3, currentCallback = null, head = null, lastIndex = -1;
+    
+    var scripts = document.documentElement.querySelectorAll('script');
+    var base = null;
+    for (var i=0; i < scripts.length; i++) {
+        var script = scripts[i];
+        if (/atomic\.(min\.)?js/.test(script.src)) {
+            base = script.src.split("/atomic")[0] + "/files/atomic/plots/";
+            break;
+        }
+    }
+    /* There's so much at issue here.
+    if (base === null) {
+        throw new Error("Can't init atomic package correctly; the file must be named atomic.js or atomic.min.js");
+    }
+    */
+
+    atomic.suggestPlot = function(callback) {
+        // bounce me, only one call can be active at a time.
+        if (currentCallback !== null) {
+            setTimeout(function() { atomic.suggestPlot(callback); }, 500);
+        }
+        
+        currentCallback = callback;
+        
+        var index = lastIndex;
+        while(index === lastIndex) {
+            index = ion.random(range).toString();
+        }
+        lastIndex = index;
+        var fileName = "0000000".substring(0,padding-index.length) + index + ".js";
+        
+        var script = document.createElement('script');
+        script.src = base + fileName;
+        
+        if (head === null) { head = document.querySelector('head'); }
+        head.appendChild(script);
+    };
+    
+    atomic.suggestPlot.callback = function() {
+        var string = Array.prototype.slice.call(arguments,0).join('');
+        currentCallback(string);
+        currentCallback = null;
+    };
+    
+})(ion, atomic);
 (function() {
     
     var MORE = " More&hellip;";

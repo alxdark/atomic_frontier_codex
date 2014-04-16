@@ -78,7 +78,6 @@ module.exports = function(grunt) {
     	        dest: '<%= output %>/c.min.js'
     	    }
     	},
-
         watch: {
             css: {
                 files: css,
