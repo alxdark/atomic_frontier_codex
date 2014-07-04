@@ -11,20 +11,16 @@
         };       
     }
     
-    window.updateMoreLinks = function() {
-        var mores = document.querySelectorAll(".more");
-        for (var i=0; i < mores.length; i++) {
-            var more = mores[i];
-            more.style.display = 'none'; 
-            if (more.__processed) { continue; }
-
-            var a = document.createElement("a");
-            a.innerHTML = MORE;
-            a.addEventListener("click", clickHandler(more));
-            
-            var previous = more.previousElementSibling;
-            previous.appendChild(a);
-        }
-    };
+    insertionQ('.more').every(function(more) {
+        if (more.__processed) { return; }
+        more.style.display = 'none'; 
+        var a = document.createElement("a");
+        a.innerHTML = MORE;
+        a.addEventListener("click", clickHandler(more));
+        
+        var previous = more.previousElementSibling;
+        previous.appendChild(a);
+        more.__processed = true;
+    });
     
 })();

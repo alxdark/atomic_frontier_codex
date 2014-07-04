@@ -5,6 +5,7 @@ module.exports = function(grunt) {
         "bower_components/knockout-ES5/dist/knockout-es5.js",
         "bower_components/radio/radio.js",
         "bower_components/humane-js/humane.js",
+        "bower_components/insertionQuery/insQ.js",
         "../../ionosphere/build/ion.js",
         "../../ionosphere/build/atomic.js",
         "src/more.js",
@@ -15,6 +16,7 @@ module.exports = function(grunt) {
         "bower_components/humane-js/themes/original.css",
         "bower_components/bootstrap/dist/css/bootstrap.css",
         "bower_components/bootstrap/dist/css/bootstrap-theme.css",
+        "src/animate.css",
         "src/codex.css",
         "src/renderers.css"
     ];

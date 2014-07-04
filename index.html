@@ -39,7 +39,7 @@
         </div>
         <div id="tabbar" class="builders">
             <div class="rules">
-                <select data-bind="event: {change: changeSection}">
+                <select class="form-control" data-bind="event: {change: changeSection}">
                     <option value="introduction">Introduction</option>
                     <!-- 
                     <option>Probabilities</option>
@@ -48,7 +48,7 @@
                 </select>
             </div>
             <div class="builders">
-                <select data-bind="event: {change: changeSection}">
+                <select class="form-control"  data-bind="event: {change: changeSection}">
                     <optgroup label="People">
                         <option value="character">Characters</option>
                         <option value="family">Family</option>
@@ -110,7 +110,7 @@
     </div>
     <div class="card" id="builders-card">
         <div id="character">
-            <div class="label">
+            <div>
                 <b>Options: </b>
                 Gender: [ <span data-bind="text: selectedGender"></span> ], 
                 Profession: [ <span data-bind="text: selectedProfession"></span> ]
@@ -123,11 +123,11 @@
             <div id="character_panel" class="panel">
                 <legend>Gender</legend>
                 <label class="select">
-                    <select data-bind="options: genders, value: selectedGender"></select>
+                    <select class="form-control" data-bind="options: genders, value: selectedGender"></select>
                 </label>
                 <legend>Profession</legend>
                 <label class="select">
-                    <select data-bind="options: professions, value: selectedProfession"></select>
+                    <select class="form-control" data-bind="options: professions, value: selectedProfession"></select>
                 </label>
                 <div class="buttons">
                     <button class="btn btn-default" data-bind="tap: create">Create</button>
@@ -136,7 +136,7 @@
             </div>
         </div>
         <div id="encounter">
-            <div class="label">
+            <div>
                 <b>Options:</b> None
             </div>
             <div class="well" data-bind="html: output"></div>
@@ -151,7 +151,7 @@
             </div>
         </div>
         <div id="gang">
-            <div class="label">
+            <div>
                 <b>Options:</b> Type: [ <span data-bind="text: selectedType"></span> ], 
                 Members: [ <span data-bind="text: count"></span> ]
             </div>
@@ -162,7 +162,7 @@
             <div id="gang_panel" class="panel">
                 <legend>Type of Gang</legend>
                 <label class="select">
-                    <select data-bind="options: gangTypes, value: selectedType"></select>
+                    <select class="form-control" data-bind="options: gangTypes, value: selectedType"></select>
                 </label>
                 <legend>Members (Die roll or #)</legend>
                 <label class="select">
@@ -175,7 +175,7 @@
             </div>
         </div>
         <div id="loot">
-            <div class="label">
+            <div>
                 <b>Options:</b> Place: [ <span data-bind="text: selectedPlace"></span> ], 
                 Profession [ <span data-bind="text: selectedProfession"></span> ], 
                 <span style="white-space: nowrap">Total Value [ <span data-bind="text: totalValue"></span> ]</span>
@@ -188,11 +188,11 @@
             <div id="loot_panel" class="panel">
                 <legend>Place</legend>
                 <label class="select">
-                    <select name="selectedPlace" data-bind="options: places, value: selectedPlace, event: {change: onChange, valueUpdate: 'afterkeydown'}"></select>
+                    <select class="form-control" name="selectedPlace" data-bind="options: places, value: selectedPlace, event: {change: onChange, valueUpdate: 'afterkeydown'}"></select>
                 </label>
                 <legend>Profession</legend>
                 <label class="select">
-                    <select name="selectedProfession" data-bind="options: professions, value: selectedProfession, event: {change: onChange, valueUpdate: 'afterkeydown'}"></select>
+                    <select class="form-control" name="selectedProfession" data-bind="options: professions, value: selectedProfession, event: {change: onChange, valueUpdate: 'afterkeydown'}"></select>
                 </label>
                 <legend>Total Value (1-500)</legend>
                 <label class="select">
@@ -205,7 +205,7 @@
             </div>
         </div>
         <div id="container">
-            <div class="label">
+            <div>
                 <b>Options:</b> Type: [ <span data-bind="text: selectedContainer"></span> ]
             </div>
             <div class="well" data-bind="html: output"></div>
@@ -216,7 +216,7 @@
             <div id="container_panel" class="panel">
                 <legend>Type</legend>
                 <label class="select">
-                    <select name="selectedContainer" data-bind="options: containers, value: selectedContainer"></select>
+                    <select class="form-control" name="selectedContainer" data-bind="options: containers, value: selectedContainer"></select>
                 </label>
                 <div class="buttons">
                     <button class="btn btn-default" data-bind="tap: create">Create</button>
@@ -225,7 +225,7 @@
             </div>
         </div>
         <div id="store">
-            <div class="label">
+            <div>
                 <b>Options:</b> Location: [ <span data-bind="text: selectedLocation"></span> ]
             </div>
             <div class="well" data-bind="html: output"></div>
@@ -236,7 +236,7 @@
             <div id="store_panel" class="panel">
                 <legend>Locations</legend>
                 <label class="select">
-                    <select name="selectedLocation" data-bind="options: locations, value: selectedLocation"></select>
+                    <select class="form-control" name="selectedLocation" data-bind="options: locations, value: selectedLocation"></select>
                 </label>
                 <div class="buttons">
                     <button class="btn btn-default" data-bind="tap: create">Create</button>
@@ -245,7 +245,7 @@
             </div>
         </div>
         <div id="relationship">
-            <div class="label">
+            <div>
                 <b>Options:</b> Relationship: [ <span data-bind="text: selectedRelation"></span> ], 
                 Profession: [ <span data-bind="text: selectedProfession"></span> ]
             </div>
@@ -256,11 +256,11 @@
             <div id="relationship_panel" class="panel">
                 <legend>Profession</legend>
                 <label class="select">
-                    <select data-bind="options: professions, value: selectedProfession"></select>
+                    <select class="form-control" data-bind="options: professions, value: selectedProfession"></select>
                 </label>
                 <legend>Relationship</legend>
                 <label class="select">
-                    <select name="selectedRelation" data-bind="options: relationships, value: selectedRelation"></select>
+                    <select class="form-control" name="selectedRelation" data-bind="options: relationships, value: selectedRelation"></select>
                 </label>            
                 <div class="buttons">
                     <button class="btn btn-default" data-bind="tap: create">Create</button>
@@ -274,7 +274,7 @@
             <p>Set points and type (bash, cut, bullet, fire), and it'll create a description. </p>
         </div>
         <div id="town">
-            <div class="label">
+            <div>
                 <b>Options:</b> Geography: [ <span data-bind="text: selectedGeography"></span> ]
             </div>
             <!-- 
@@ -289,7 +289,7 @@
             <div id="town_panel" class="panel">
                 <legend>Geography</legend>
                 <label class="select">
-                    <select data-bind="options: geographies, value: selectedGeography"></select>
+                    <select class="form-control" data-bind="options: geographies, value: selectedGeography"></select>
                 </label>
                 <div class="buttons">
                     <button class="btn btn-default" data-bind="tap: create">Create</button>
@@ -301,7 +301,7 @@
             <p>Stores</p>
         </div>
         <div id="weather">
-            <div class="label">
+            <div>
                 <b>Options:</b> Month: [ <span data-bind="text: selectedMonth"></span> ]
             </div>
             <div class="well" data-bind="html: output"></div>
@@ -312,7 +312,7 @@
             <div id="weather_panel" class="panel">
                 <legend>Month</legend>
                 <label class="select">
-                    <select data-bind="options: months, value: selectedMonth"></select>
+                    <select class="form-control" data-bind="options: months, value: selectedMonth"></select>
                 </label>
                 <div class="buttons">
                     <button class="btn btn-default" data-bind="tap: create">Create</button>
@@ -328,7 +328,7 @@
             </div>
         </div>
         <div id="family">
-            <div class="label">
+            <div>
                 <b>Options:</b> Profession [ <span data-bind="text: selectedProfession"></span> ], 
                     Generations [ <span data-bind="text: selectedGeneration"></span> ]
             </div>
@@ -339,11 +339,11 @@
             <div id="family_panel" class="panel">
                 <legend>Profession</legend>
                 <label class="select">
-                    <select data-bind="options: professions, value: selectedProfession"></select>
+                    <select class="form-control" data-bind="options: professions, value: selectedProfession"></select>
                 </label>
                 <legend>Generations</legend>
                 <label class="select">
-                    <select data-bind="options: generations, value: selectedGeneration"></select>
+                    <select class="form-control" data-bind="options: generations, value: selectedGeneration"></select>
                 </label>
                 <div class="buttons">
                     <button class="btn btn-default" data-bind="tap: create">Create</button>
@@ -360,34 +360,34 @@
                     <span class="minor" data-bind="html: descr"></span>
                 </p>
             </div>
-            <div style="margin-top: 10px;">Modifier</div>
-            <div class="btn-group">
-                <a class="btn btn-small" data-active="btn-danger" data-bind="tap: setMod">-3</a>
-                <a class="btn btn-small" data-active="btn-danger" data-bind="tap: setMod">-2</a>
-                <a class="btn btn-small" data-active="btn-danger" data-bind="tap: setMod">-1</a>
-                <a class="btn btn-small" data-active="btn-primary" data-bind="tap: setMod, css: {'btn-primary': mod == 0}">0</a>
-                <a class="btn btn-small" data-active="btn-success" data-bind="tap: setMod">+1</a>
-                <a class="btn btn-small" data-active="btn-success" data-bind="tap: setMod">+2</a>
-                <a class="btn btn-small" data-active="btn-success" data-bind="tap: setMod">+3</a>
-                <a class="btn btn-small" data-active="btn-success" data-bind="tap: setMod">+4</a>
+            <div style="margin-top: 10px;"><h4>Modifier</h4></div>
+            <div class="btn-group btn-group-justified">
+                <a class="btn btn-default" data-active="btn-danger" data-bind="tap: setMod">-3</a>
+                <a class="btn btn-default" data-active="btn-danger" data-bind="tap: setMod">-2</a>
+                <a class="btn btn-default" data-active="btn-danger" data-bind="tap: setMod">-1</a>
+                <a class="btn btn-default" data-active="btn-primary" data-bind="tap: setMod, css: {'btn-primary': mod == 0}">0</a>
+                <a class="btn btn-default" data-active="btn-success" data-bind="tap: setMod">+1</a>
+                <a class="btn btn-default" data-active="btn-success" data-bind="tap: setMod">+2</a>
+                <a class="btn btn-default" data-active="btn-success" data-bind="tap: setMod">+3</a>
+                <a class="btn btn-default" data-active="btn-success" data-bind="tap: setMod">+4</a>
             </div>
             <div class="buttons">
-                <button class="btn btn-large btn-block" data-bind="tap: roll">Roll</button>
-                <button class="btn btn-large btn-block" data-bind="tap: combatRoll">Combat Roll</button>
+                <button class="btn btn-default btn-lg btn-block" data-bind="tap: roll">Roll</button>
+                <button class="btn btn-default btn-lg btn-block" data-bind="tap: combatRoll">Combat Roll</button>
             </div>
         </div>
     </div> 
     <div class="card" id="history-card">
         <div id="history" data-bind="foreach: historyItems">
             <div class="hsy-entry">
-                <div data-bind="text: $data"></div>
+                <div data-bind="html: $data.html"></div>
                 <a data-bind="click: $parent.save">Save</a>
                 <a data-bind="click: $parent.removeHistory">Delete</a>
             </div>
         </div>
         <div id="saved" data-bind="foreach: savedItems">
             <div class="hsy-entry">
-                <div data-bind="text: $data"></div>
+                <div data-bind="html: $data.html"></div>
                 <a data-bind="click: $parent.email">Email</a>
                 <a data-bind="click: $parent.remove">Delete</a>
             </div>

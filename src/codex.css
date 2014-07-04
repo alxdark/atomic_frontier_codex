@@ -75,13 +75,12 @@ a, a:hover, a:focus {
             background-color: #7D796F; 
             border-bottom: 1px solid black;
             text-align: center;
+            padding: 2px 0px;
         }
         #tabbar select {
-            margin: 5px auto;
-            padding: 4px 15px;
-            line-height: 1;
-            font-size: 110%;
-            /*background: #7D796F url(../images/alert-overlay.png) repeat-x;*/
+            margin: 0 auto;
+            /*background-color: #7D796F;*/
+            background-color: white;
             border: 1px solid #5D584B;
             width: 50%;
         }
@@ -152,12 +151,19 @@ a, a:hover, a:focus {
     .dice .minor {
         font-size: 80%;
     }
-    .well p:first-child {
+    .well > * {
+        margin: 0;
+    }
+    .well .more {
+        margin-top: 10px;
+    }
+    /*
+    .well > *:first-child, .more > *:first-child {
         margin-top: 0 ! important;
     }
-    .well p:last-child {
+    .well > *:last-child, .more > *:last-child {
         margin-bottom: 0 ! important;
-    }
+    }*/
 
 /* FORMS */
 
@@ -176,18 +182,19 @@ input {
 }
 select {
     font-size: 18px;
+    font-weight: normal;
     width: 200px;
 }
-
 /* RULES */
 
 .welcome {
     color: white;
     background-color: #82A401;
-    margin: -15px -10px 0px;
-    padding: .5rem 1rem;
+    margin: -15px -10px 20px;
+    padding: 2rem 1rem;
     background-color: #82A401;
-    min-height: 150px;
+    min-height: 180px;
+    font-size: 120%;
 }
 .welcome img {
     float: right;
@@ -212,13 +219,12 @@ select {
     border-bottom: 2px solid black;
     padding: 8px;
 }
-.hsy-entry a {
+.hsy-entry a[data-bind] {
     margin-top: 8px;
     display: inline-block;
     font-size: larger;
     padding: 0 10px;
 }
-
 
 /* PANELS */
 
@@ -234,6 +240,10 @@ select {
     transform: translate(0%,-100%);
     -webkit-transition: -webkit-transform .3s ease-in;
     transition: transform .3s ease-in;
+}
+.panel legend {
+    margin: 0px;
+    border: none;
 }
     .panelOpen {
         -webkit-transform: translate(0%,0%);

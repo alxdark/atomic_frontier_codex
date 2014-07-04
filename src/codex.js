@@ -169,11 +169,8 @@
                 var html = (str) ? this.model : this.model.toHTML();
                 var string = (str) ? this.model : this.model.toString();
                 this.output = html;
-                radio('history').broadcast({type: this.type, text: string});
+                radio('history').broadcast({type: this.type, text: string, html: html});
                 window.scrollTo(0,1);
-                
-                updateMoreLinks();
-                
             }.bind(this), 1);
         },
         makeCall: function() {
@@ -181,8 +178,9 @@
         },
         save: function() {
             if (this.model) {
+                var html = (_.isString(this.model)) ? this.model : this.model.toHTML();
                 var string = (_.isString(this.model)) ? this.model : this.model.toString();
-                radio('save').broadcast({ type: this.type, text: string});
+                radio('save').broadcast({ type: this.type, text: string, html: html});
                 radio('message').broadcast("Saved " + this.type);
             }
             this.model = null;
@@ -413,14 +411,28 @@
         },
         updateUI: function(text, descr) {
             this.locked = true;
-            this.container.classList.add("bounceIn");
+            this.container.classList.add("wobble");
+            this.output = "&nbsp;";
+            this.descr = "&nbsp;";
+            
+            var self = this;
+            setTimeout(function() {
+                self.output = text;
+                self.descr = descr;
+                var string = text + ": " + descr;
+                radio('history').broadcast({type: 'dice', text: string, html: string});
+                self.container.classList.remove("wobble");
+                self.locked = false;
+            }, 1100);
+            /*
             this.output = text;
             this.descr = descr;
             radio('history').broadcast({type: 'dice', text: text + ": " + descr});
             setTimeout(function() {
-                this.container.classList.remove("bounceIn");
+                this.container.classList.remove("wobble");
                 this.locked = false;
             }.bind(this), 1100);
+            */
         }
     });
     
@@ -434,6 +446,14 @@
             this.savedItems = codex.savedItems || [];
             ko.track(this, ['historyItems','savedItems']);
         },
+        contains: function(array, event) {
+            for (var i=0; i < array.length; i++) {
+                if (array[i].text === event.text) {
+                    return true;
+                }
+            }
+            return false;
+        },
         persist: function(data) {
             localStorage.setItem('history', JSON.stringify(data));
         },
@@ -441,18 +461,18 @@
             while (this.historyItems.length >= 20) {
                 this.historyItems.pop();
             }
-            this.historyItems.unshift(event.text);
+            this.historyItems.unshift(event);
             this.persist(ko.toJS(this));
         },
         addToSaved: function(event) {
-            this.savedItems.unshift(event.text);
+            this.savedItems.unshift(event);
             this.persist(ko.toJS(this));
         },
         save: function(data, event) {
             var view = ko.contextFor(event.target).$parent;
-            if (view.savedItems.indexOf(data) === -1) {
+            if (!view.contains(view.savedItems, data)) {
                 view.historyItems.remove(data);
-                view.addToSaved({ type: '', text: data });
+                view.addToSaved(data);
                 radio('message').broadcast("Saved");
             } else {
                 radio('message').broadcast("Already saved");
@@ -473,7 +493,7 @@
             }
         },
         email: function(data, event) {
-            document.location = "mailto:?subject="+ encodeURIComponent("Data from The Codex") +"&body=" + encodeURIComponent(data);
+            document.location = "mailto:?subject="+ encodeURIComponent("Data from The Codex") +"&body=" + encodeURIComponent(data.text);
         }
     });
     
